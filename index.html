@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>GWB Checker v4.1</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --panel: #171b26;
+  --panel2: #1e2333;
+  --border: #2a3045;
+  --accent: #4f8ef7;
+  --green: #3ecf8e;
+  --red: #f76f6f;
+  --yellow: #f5c842;
+  --text: #c9d1e0;
+  --text-dim: #5a6480;
+  --text-bright: #eef2ff;
+  --mono: 'Cascadia Code', 'Consolas', 'Fira Mono', monospace;
+  --ui: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--ui);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: .5px;
+}
+.tag {
+  font-size: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+.main-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  width: 380px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+}
+.input-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.input-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.line-gutter {
+  width: 52px;
+  flex-shrink: 0;
+  padding: 10px 8px 10px 0;
+  background: #0a0c12;
+  border-right: 1px solid #1c2231;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  text-align: right;
+  overflow: hidden;
+  user-select: none;
+}
+.line-gutter-content {
+  transform: translateY(calc(-1 * var(--input-scroll-top, 0px)));
+}
+.line-number {
+  height: 16px;
+}
+.line-number.error {
+  color: var(--red);
+  font-weight: 700;
+  background: rgba(247, 111, 111, 0.12);
+  border-radius: 4px;
+}
+.input-editor {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.input-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: transparent;
+  pointer-events: none;
+}
+.input-overlay-content {
+  transform: translateY(calc(-1 * var(--input-scroll-top, 0px)));
+}
+.input-overlay .error-chunk {
+  display: inline-block;
+  color: transparent;
+  background: rgba(247, 111, 111, 0.18);
+  outline: 1px solid rgba(247, 111, 111, 0.65);
+  border-radius: 3px;
+}
+.panel-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+#jsonInput {
+  flex: 1;
+  min-height: 280px;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  padding: 10px;
+  resize: none;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+#jsonInput:focus { box-shadow: inset 0 0 0 1px rgba(79, 142, 247, 0.28); }
+#jsonInput.error-highlight {
+  box-shadow: inset 0 0 0 1px rgba(247, 111, 111, 0.25);
+}
+.btn-primary {
+  padding: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-primary:hover { opacity: .85; }
+.btn-secondary {
+  padding: 7px 10px;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .15s;
+  flex: 1;
+}
+.btn-secondary:hover { background: #2a3045; }
+.btn-secondary:disabled { opacity: .35; cursor: default; }
+.btn-row { display: flex; gap: 6px; }
+#statusBox {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  min-height: 48px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+#statusBox.ok  { color: var(--green); border-color: #1a4a35; }
+#statusBox.err { color: var(--red);   border-color: #4a1a1a; }
+
+/* legend */
+#legend {
+  display: none;
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 11.5px;
+  border-radius: 3px;
+  padding: 3px 4px;
+  transition: background .1s;
+}
+.legend-row:hover { background: #1a2030; }
+.legend-row.selected { background: #1e2840; }
+.legend-row.hidden { opacity: .35; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* selection info */
+#selInfo {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  min-height: 40px;
+  display: none;
+}
+#selInfo.active {
+  display: block;
+  color: var(--yellow);
+  border-color: #4a3d10;
+}
+
+/* ── CANVAS ── */
+.canvas-wrap {
+  flex: 1;
+  background: #0a0c12;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.map-area {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+canvas.dragging { cursor: grabbing; }
+canvas.over-point { cursor: grab; }
+
+.canvas-btn {
+  position: absolute;
+  padding: 6px 12px;
+  background: rgba(30,35,51,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.canvas-btn:hover { background: #2a3045; }
+#resetViewBtn { bottom: 16px; right: 16px; }
+#modeBtn {
+  bottom: 16px;
+  left: 16px;
+  display: none;
+  padding: 6px 14px;
+  font-weight: 700;
+}
+#modeBtn.edit-mode {
+  background: rgba(79,142,247,.2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#sectionBtn {
+  bottom: 52px;
+  left: 16px;
+  display: none;
+  padding: 6px 14px;
+  font-weight: 700;
+}
+#sectionBtn.on {
+  background: rgba(62,207,142,.18);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* ── CROSS SECTION PANE ── */
+.section-pane {
+  height: 400px;
+  flex-shrink: 0;
+  background: var(--panel);
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+}
+.section-pane.open { display: flex; }
+.sec-divider {
+  height: 7px;
+  flex-shrink: 0;
+  cursor: ns-resize;
+  background: #141824;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.sec-divider:hover { background: var(--accent); }
+.sec-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.sec-title { font-weight: 700; color: var(--text-bright); font-size: 12px; white-space: nowrap; }
+.sec-info { color: var(--text-dim); font-family: var(--mono); font-size: 10.5px; white-space: nowrap; }
+.sec-toolbar label { display: flex; align-items: center; gap: 4px; color: var(--text-dim); white-space: nowrap; }
+.sec-toolbar input[type=number] {
+  width: 64px; background: #0c0e16; border: 1px solid var(--border);
+  color: var(--text); border-radius: 4px; padding: 3px 5px;
+  font-family: var(--mono); font-size: 11px;
+}
+.sec-toolbar select {
+  background: #0c0e16; border: 1px solid var(--border); color: var(--text);
+  border-radius: 4px; padding: 3px 4px; font-size: 11px;
+}
+.sec-spacer { flex: 1; }
+.sec-toolbar2 { background: rgba(0,0,0,.18); }
+.sec-line-grp {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: #0c0e16;
+  min-width: 0;
+}
+.sec-line-grp.off { opacity: .45; }
+.sec-chk { display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text); }
+.sec-chk input { accent-color: var(--accent); cursor: pointer; }
+.mini-btn.ico { padding: 2px 6px; font-size: 12px; line-height: 1.35; }
+.sec-line-grp .sec-info { overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.mini-btn {
+  background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 4px; padding: 3px 9px; font-size: 11px; cursor: pointer;
+  transition: background .15s; white-space: nowrap;
+}
+.mini-btn:hover { background: #2a3045; }
+.mini-btn.on { background: rgba(79,142,247,.2); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.sec-body { flex: 1; min-height: 0; position: relative; background: #0a0c12; }
+#secCanvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+.sec-tip {
+  position: absolute; pointer-events: none; display: none; z-index: 5;
+  background: rgba(12,14,22,.95); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 8px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-bright);
+  white-space: pre; line-height: 1.5;
+}
+.sec-legend {
+  flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 5px 14px;
+  padding: 6px 10px; border-top: 1px solid var(--border);
+  max-height: 78px; overflow-y: auto;
+}
+.sec-legend .item { display: flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer; }
+.sec-legend .item.off { opacity: .32; }
+.sec-legend .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,.2); flex-shrink: 0; }
+.sec-legend .grp { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; align-self: center; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+}
+.right-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+#copyBtn {
+  padding: 5px 12px;
+  background: var(--green);
+  color: #0a1a12;
+  border: none;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+#copyBtn:hover { opacity: .85; }
+#wbOutput {
+  flex: 1;
+  background: #0c0e16;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  overflow-y: auto;
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  tab-size: 2;
+}
+/* Syntax color tokens */
+.tok-key    { color: #7eb7f5; }
+.tok-str    { color: #ce9178; }
+.tok-num    { color: #b5cea8; }
+.tok-punct  { color: var(--text-dim); }
+.tok-feat   { color: #c792ea; }
+
+/* per-feature coord highlight classes injected dynamically */
+/* .fc-N { color: <feature color> } */
+/* .fc-N.sel { filter: brightness(1.5); font-weight: 700; } */
+/* .fc-N.sel-pt { background: rgba(...); border-radius:2px; } */
+
+/* feature block in right panel: scroll-to + highlight on select */
+.feat-block {
+  display: inline-block;
+  width: calc(100% + 8px);
+  vertical-align: top;
+  border-radius: 6px;
+  margin: 2px -4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  transition: background .18s, border-color .18s, box-shadow .18s;
+}
+.feat-block.active-feat {
+  background: rgba(79, 142, 247, 0.12);
+  border-color: rgba(79, 142, 247, 0.55);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.feat-block.flash-feat {
+  animation: featFlash 1.1s ease;
+}
+@keyframes featFlash {
+  0%   { background: rgba(245, 200, 66, 0.28); border-color: var(--yellow); }
+  100% { background: rgba(79, 142, 247, 0.12); border-color: rgba(79, 142, 247, 0.55); }
+}
+</style>
+<script data-goatcounter="https://GOATCOUNTER_CODE.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<header>
+  <h1><span data-i18n="app.title">⬡ GWB 檢查器</span> <span style="color:var(--text-dim)">v4.1</span></h1>
+  <span class="tag" data-i18n="app.tag">點位編輯 + 剖面版</span>
+  <button id="langBtn" class="canvas-btn" style="position:static;margin-left:auto">EN</button>
+</header>
+
+<div class="main-layout">
+
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="input-section">
+      <div class="panel-label" data-i18n="lbl.paste">貼上 .wb 內容</div>
+      <div class="input-shell">
+        <div class="line-gutter" id="lineGutter"><div class="line-gutter-content" id="lineGutterContent"></div></div>
+        <div class="input-editor">
+          <div class="input-overlay" id="inputOverlay"><div class="input-overlay-content" id="inputOverlayContent"></div></div>
+          <textarea id="jsonInput" placeholder='直接貼上 cat 輸出也行...'></textarea>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="drawBtn" data-i18n="btn.draw">✦ 解析並繪製</button>
+    <div id="statusBox" data-i18n="st.waiting">等待輸入 GWB / .wb 資料…</div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="undoBtn" disabled data-i18n="btn.undo">↩ 上一步</button>
+      <button class="btn-secondary" id="resetEditBtn" disabled data-i18n="btn.resetEdit">⊘ 重置所有編輯</button>
+    </div>
+
+    <div>
+      <div class="panel-label" data-i18n="lbl.layers">圖層</div>
+      <div id="legend"></div>
+    </div>
+
+    <div id="selInfo"></div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <div class="map-area">
+      <canvas id="mainCanvas"></canvas>
+      <button class="canvas-btn" id="resetViewBtn" data-i18n="btn.resetView">重置視角</button>
+      <button class="canvas-btn" id="modeBtn" data-i18n="btn.edit">✎ 編輯模式</button>
+      <button class="canvas-btn" id="sectionBtn" data-i18n="btn.section">◫ 剖面</button>
+    </div>
+
+    <div class="section-pane" id="sectionPane">
+      <div class="sec-divider" id="secDivider" data-i18n-title="tip.drag" title="拖曳調整高度"></div>
+      <div class="sec-toolbar">
+        <span class="sec-title" data-i18n="sec.title">◫ 剖面</span>
+
+        <div class="sec-line-grp" id="grpA">
+          <label class="sec-chk"><input type="checkbox" id="secOnA" checked><b style="color:#f5c842">A–A′</b></label>
+          <button class="mini-btn ico" id="secPickA" data-i18n-title="tip.pickA" title="在地圖上點兩下畫 A–A′">✎</button>
+          <button class="mini-btn ico" id="secHA"    data-i18n-title="tip.hmid" title="設為模型水平中線">↔</button>
+          <button class="mini-btn ico" id="secVA"    data-i18n-title="tip.vmid" title="設為模型垂直中線">↕</button>
+          <button class="mini-btn ico" id="secSwapA" data-i18n-title="tip.swapA" title="反轉 A / A′">⇄</button>
+          <span class="sec-info" id="secInfoA" data-i18n="sec.undef">尚未定義剖面線</span>
+        </div>
+
+        <div class="sec-line-grp off" id="grpB">
+          <label class="sec-chk"><input type="checkbox" id="secOnB"><b style="color:#2ee6d6">B–B′</b></label>
+          <button class="mini-btn ico" id="secPickB" data-i18n-title="tip.pickB" title="在地圖上點兩下畫 B–B′">✎</button>
+          <button class="mini-btn ico" id="secHB"    data-i18n-title="tip.hmid" title="設為模型水平中線">↔</button>
+          <button class="mini-btn ico" id="secVB"    data-i18n-title="tip.vmid" title="設為模型垂直中線">↕</button>
+          <button class="mini-btn ico" id="secSwapB" data-i18n-title="tip.swapB" title="反轉 B / B′">⇄</button>
+          <span class="sec-info" id="secInfoB" data-i18n="sec.off">（未啟用）</span>
+        </div>
+      </div>
+
+      <div class="sec-toolbar sec-toolbar2">
+        <label class="sec-chk"><input type="checkbox" id="secEqual"> <span data-i18n="sec.equal">兩剖面等長</span></label>
+        <label><span data-i18n="sec.ref">基準</span>
+          <select id="secEqRef"><option value="A">A</option><option value="B">B</option></select>
+        </label>
+        <span class="sec-info" id="secEqNote"></span>
+        <button class="mini-btn" id="secFileBtn" style="display:none" data-i18n="sec.fileCS">⌸ 用檔案的 cross section → A</button>
+        <span class="sec-spacer"></span>
+        <label><span data-i18n="sec.depth">深度</span> <input type="number" id="secDepth" value="400" step="25" min="1"> km</label>
+        <label><span data-i18n="sec.res">解析度</span>
+          <select id="secRes">
+            <option value="240" data-i18n="res.low">低</option>
+            <option value="480" selected data-i18n="res.mid">中</option>
+            <option value="820" data-i18n="res.high">高</option>
+          </select>
+        </label>
+        <button class="mini-btn" id="secPngBtn">⇩ PNG</button>
+        <button class="mini-btn" id="secCloseBtn">✕</button>
+      </div>
+      <div class="sec-body">
+        <canvas id="secCanvas"></canvas>
+        <div class="sec-tip" id="secTip"></div>
+      </div>
+      <div class="sec-legend" id="secLegend"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div class="right-toolbar">
+      <div class="panel-label" style="margin:0" data-i18n="lbl.output">修改後的 WB 腳本</div>
+      <button id="copyBtn" data-i18n="btn.copy">⎘ 複製</button>
+    </div>
+    <div id="wbOutput"><span style="color:var(--text-dim)" data-i18n="out.empty">解析資料後自動顯示…</span></div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════ i18n ═══════════ */
+const I18N = {
+ zh: {
+  'app.title':'⬡ GWB 檢查器','app.tag':'點位編輯 + 剖面版',
+  'lbl.paste':'貼上 .wb 內容','lbl.layers':'圖層','lbl.output':'修改後的 WB 腳本',
+  'lbl.point':'點','lbl.points':'個點位','out.empty':'解析資料後自動顯示…',
+  'btn.draw':'✦ 解析並繪製','btn.undo':'↩ 上一步','btn.resetEdit':'⊘ 重置所有編輯',
+  'btn.resetView':'重置視角','btn.edit':'✎ 編輯模式','btn.editing':'✎ 編輯中…(點選點位可拖移)',
+  'btn.section':'◫ 剖面','btn.copy':'⎘ 複製','btn.copied':'✓ 已複製！',
+  'st.waiting':'等待輸入 GWB / .wb 資料…','st.needInput':'❌ 請先輸入資料內容。',
+  'st.filtered':'(💡 已自動過濾 Shell 雜訊)',
+  'st.parsed':'✅ 解析成功！共繪製 {n} 個物件。','st.resetDone':'⊘ 已重置所有編輯。',
+  'st.pick1':'◫ 剖面 {id}：在地圖上點第 1 點（{id}）。',
+  'st.pick2':'◫ 已定 {id} 點，再點一下決定 {id}′ 點。',
+  'st.secSet':'◫ 剖面 {id}–{id}′ 已設定，正在計算 composition…',
+  'err.noJson':'找不到有效的 JSON 結構 ({…})',
+  'err.syntax':'❌ 語法錯誤：第 {l} 行，第 {c} 字元\n原因：{m}',
+  'err.parse':'❌ JSON 解析失敗：{m}',
+  'sec.title':'◫ 剖面','sec.undef':'尚未定義剖面線','sec.off':'（未啟用）',
+  'sec.equal':'兩剖面等長','sec.ref':'基準','sec.depth':'深度','sec.res':'解析度',
+  'sec.fileCS':'⌸ 用檔案的 cross section → A',
+  'sec.eqNote':'（{o} 會被縮放成與 {r} 等長）',
+  'sec.bothOff':'兩個剖面都關閉了 — 勾選上方的 A–A′ 或 B–B′ 來顯示',
+  'sec.hint':'按 {id} 的「✎」再到地圖點兩下決定 {id}–{id}′',
+  'sec.pick1':'請在地圖點 {id} 點…','sec.pick2b':'請在地圖點 {id}′ 點…',
+  'sec.noComp':'（剖面上沒有任何 composition model 命中）',
+  'sec.greyTip':'灰底＝該 feature 有幾何但此深度沒有 composition model；點一下可在所有視圖隱藏',
+  'res.low':'低','res.mid':'中','res.high':'高',
+  'tip.drag':'拖曳調整高度','tip.pickA':'在地圖上點兩下畫 A–A′','tip.pickB':'在地圖上點兩下畫 B–B′',
+  'tip.hmid':'設為模型水平中線','tip.vmid':'設為模型垂直中線',
+  'tip.swapA':'反轉 A / A′','tip.swapB':'反轉 B / B′',
+  'tip.dist':'距離','tip.depth':'深度','tip.noFeat':'（無 feature）',
+  'tip.noComp':'—（此深度無 composition model）',
+  'tip.fromTop':'距頂面','tip.thick':'厚','tip.alongSlab':'沿板距',
+  'ph.input':'直接貼上包含提示字元的 cat 內容也行…\n\n範例：'
+ },
+ en: {
+  'app.title':'⬡ GWB Checker','app.tag':'point editing + cross-section',
+  'lbl.paste':'Paste .wb content','lbl.layers':'Layers','lbl.output':'Edited WB script',
+  'lbl.point':'point','lbl.points':'points','out.empty':'Shown automatically after parsing…',
+  'btn.draw':'✦ Parse & draw','btn.undo':'↩ Undo','btn.resetEdit':'⊘ Reset all edits',
+  'btn.resetView':'Reset view','btn.edit':'✎ Edit mode','btn.editing':'✎ Editing… (drag points)',
+  'btn.section':'◫ Section','btn.copy':'⎘ Copy','btn.copied':'✓ Copied!',
+  'st.waiting':'Waiting for GWB / .wb input…','st.needInput':'❌ Please enter some content first.',
+  'st.filtered':'(💡 shell noise filtered automatically)',
+  'st.parsed':'✅ Parsed. {n} object(s) drawn.','st.resetDone':'⊘ All edits reset.',
+  'st.pick1':'◫ Section {id}: click point 1 ({id}) on the map.',
+  'st.pick2':'◫ {id} set. Click once more to place {id}′.',
+  'st.secSet':'◫ Section {id}–{id}′ set, computing composition…',
+  'err.noJson':'No valid JSON structure found ({…})',
+  'err.syntax':'❌ Syntax error: line {l}, column {c}\nReason: {m}',
+  'err.parse':'❌ JSON parse failed: {m}',
+  'sec.title':'◫ Section','sec.undef':'No section line defined','sec.off':'(disabled)',
+  'sec.equal':'Equal section length','sec.ref':'Reference','sec.depth':'Depth','sec.res':'Resolution',
+  'sec.fileCS':"⌸ Use file's cross section → A",
+  'sec.eqNote':'({o} will be scaled to match {r})',
+  'sec.bothOff':'Both sections are off — tick A–A′ or B–B′ above to show one',
+  'sec.hint':"Click {id}'s ✎, then click twice on the map to set {id}–{id}′",
+  'sec.pick1':'Click point {id} on the map…','sec.pick2b':'Click point {id}′ on the map…',
+  'sec.noComp':'(no composition model hit along this section)',
+  'sec.greyTip':'Grey = feature has geometry but no composition model at this depth; click to hide it in all views',
+  'res.low':'Low','res.mid':'Medium','res.high':'High',
+  'tip.drag':'Drag to resize','tip.pickA':'Click twice on the map to draw A–A′','tip.pickB':'Click twice on the map to draw B–B′',
+  'tip.hmid':'Set to model horizontal midline','tip.vmid':'Set to model vertical midline',
+  'tip.swapA':'Reverse A / A′','tip.swapB':'Reverse B / B′',
+  'tip.dist':'Distance','tip.depth':'Depth','tip.noFeat':'(no feature)',
+  'tip.noComp':'— (no composition model at this depth)',
+  'tip.fromTop':'From top','tip.thick':'thickness','tip.alongSlab':'Along slab',
+  'ph.input':'You can paste raw cat output with shell prompts too…\n\nExample:'
+ }
+};
+let LANG = localStorage.getItem('gwbLang') || 'zh';
+if(LANG!=='zh' && LANG!=='en') LANG='zh';
+function t(k){ const d=I18N[LANG]||I18N.zh; return (d[k]!=null) ? d[k] : (I18N.zh[k]!=null ? I18N.zh[k] : k); }
+const canvas  = document.getElementById('mainCanvas');
+const ctx     = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
+
+let S = {
+  originalRaw: '',
+  originalData: null,
+  editedData: null,
+  features: [],
+  bbox: null,
+  view: { scale:1, ox:0, oy:0 },
+  isDragging: false,
+  isPanning: false,
+  panStart: { x:0, y:0 },
+  hoverPoint: null,        // { rIdx, ci }
+  hoverFeature: null,      // rIdx
+  selectedFeature: null,   // rIdx
+  selectedPoint: null,     // { rIdx, ci }
+  pendingScrollFi: null,   // scroll right panel to this feature index after rebuild
+  draggingPoint: null,     // { rIdx, ci }
+  editMode: false,
+  history: [],
+  hiddenFeatures: new Set(),
+};
+
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function setStatus(type, msg){ const el = $('statusBox'); el.className = type; el.textContent = msg; }
+function getColor(i, alpha=1){ const h = (i*137.508)%360; return alpha<1 ? `hsla(${h},75%,62%,${alpha})` : `hsl(${h},75%,62%)`; }
+function brighten(hsl){ return hsl.replace('62%','85%'); }
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+let inputErrorState = null; // { line, column, position }
+
+function clearInputErrorHighlight(){
+  const input = $('jsonInput');
+  input.classList.remove('error-highlight');
+  inputErrorState = null;
+  syncInputDecorations();
+}
+function highlightInputError(lineNumber, columnNumber, position){
+  if(!Number.isFinite(lineNumber) || lineNumber < 1) return;
+  const input = $('jsonInput');
+  input.classList.add('error-highlight');
+  inputErrorState = { line: lineNumber, column: columnNumber, position };
+  syncInputDecorations();
+
+  const style = getComputedStyle(input);
+  const lineHeight = parseFloat(style.lineHeight) || 16;
+  const targetTop = Math.max(0, (lineNumber - 1) * lineHeight - input.clientHeight / 2 + lineHeight);
+  input.scrollTop = targetTop;
+  syncInputDecorations();
+}
+
+function syncInputDecorations(){
+  const input = $('jsonInput');
+  const gutter = $('lineGutter');
+  const gutterContent = $('lineGutterContent');
+  const overlay = $('inputOverlay');
+  const overlayContent = $('inputOverlayContent');
+  const value = input.value || '';
+  const lines = value.split('\n');
+  const lineCount = Math.max(1, lines.length);
+
+  gutter.style.setProperty('--input-scroll-top', `${input.scrollTop}px`);
+  overlay.style.setProperty('--input-scroll-top', `${input.scrollTop}px`);
+
+  let gutterHtml = '';
+  for(let i = 1; i <= lineCount; i++){
+    const cls = inputErrorState && inputErrorState.line === i ? 'line-number error' : 'line-number';
+    gutterHtml += `<div class="${cls}">${i}</div>`;
+  }
+  gutterContent.innerHTML = gutterHtml;
+
+  if(inputErrorState && Number.isFinite(inputErrorState.position)){
+    const pos = Math.max(0, Math.min(inputErrorState.position, value.length));
+    const start = Math.max(0, pos - 1);
+    const end = Math.min(value.length, pos + 1);
+    const before = escHtml(value.slice(0, start));
+    const focus = escHtml(value.slice(start, end) || value.slice(pos, pos + 1) || ' ');
+    const after = escHtml(value.slice(end));
+    overlayContent.innerHTML = `${before}<span class="error-chunk">${focus}</span>${after}`;
+  } else {
+    overlayContent.innerHTML = escHtml(value);
+  }
+
+  if(value.endsWith('\n')) overlayContent.innerHTML += '\n';
+}
+
+function worldToScreen(wx, wy){
+  const sy = S.bbox ? S.bbox.maxY - wy + S.bbox.minY : wy;
+  return { x: wx*S.view.scale + S.view.ox, y: sy*S.view.scale + S.view.oy };
+}
+function screenToWorld(sx, sy){
+  const wx = (sx - S.view.ox) / S.view.scale;
+  const rawY = (sy - S.view.oy) / S.view.scale;
+  const wy = S.bbox ? S.bbox.maxY - rawY + S.bbox.minY : rawY;
+  return { x: wx, y: wy };
+}
+
+function fm(v) {
+  if (typeof v !== 'number') return v;
+  if (v === 0) return '0';
+  if (Math.abs(v) >= 1000) return +(v / 1000).toFixed(4) + 'e3';
+  return String(v); 
+}
+
+$('drawBtn').onclick = function(){
+  const raw = $('jsonInput').value.trim();
+  clearInputErrorHighlight();
+  if(!raw){ setStatus('err',t('st.needInput')); return; }
+  try {
+    const match = raw.match(/\{[^]*\}/);
+    if(!match) throw new Error(t('err.noJson'));
+    const clean = match[0];
+    let data;
+    try { data = JSON.parse(clean); }
+    catch(e){ throw new Error(diagJSON(e, clean)); }
+
+    S.originalRaw  = clean;
+    S.originalData = deepClone(data);
+    S.editedData   = deepClone(data);
+    S.history      = [];
+    S.hoverPoint   = null;
+    S.hoverFeature = null;
+    S.selectedFeature = null;
+    S.selectedPoint   = null;
+    S.hiddenFeatures  = new Set();
+    S.editMode        = false;
+
+    buildFeatures();
+    if(S.bbox){ resize(); autoFit(); }
+    resetSectionForNewData();
+    updateAll();
+
+    const filtered = clean.length !== raw.length ? '\n'+t('st.filtered') : '';
+    setStatus('ok', t('st.parsed').replace('{n}', S.features.length)+filtered);
+  } catch(e){
+    setStatus('err', e.message);
+  }
+};
+
+function diagJSON(e, text){
+  const m = e.message.match(/position\s+(\d+)/);
+  if(m){
+    const pos = +m[1];
+    const lines = text.slice(0,pos).split('\n');
+    const lineNumber = lines.length;
+    const columnNumber = lines[lines.length-1].length;
+    highlightInputError(lineNumber, columnNumber, pos);
+    return t('err.syntax').replace('{l}',lineNumber).replace('{c}',columnNumber).replace('{m}',e.message);
+  }
+  return t('err.parse').replace('{m}', e.message);
+}
+
+function buildFeatures(){
+  const raw = S.editedData.features || [];
+  let allPts = [];
+  S.features = [];
+  
+  raw.forEach((f, fi)=>{
+    const coords = (f.coordinates||[]).map(p=>({x:p[0], y:p[1]}));
+    coords.forEach(p=>allPts.push(p));
+    let cx=0,cy=0;
+    if(coords.length){
+      coords.forEach(p=>{cx+=p.x;cy+=p.y;});
+      cx/=coords.length; cy/=coords.length;
+    }
+    
+    S.features.push({
+      rIdx: S.features.length,
+      isMain: true,
+      fi: fi,
+      name: f.name||`F${fi}`,
+      coords,
+      center: {x:cx, y:cy},
+      isSlab: !!(f.model && f.model.includes('subducting')),
+      color: getColor(fi),
+      isMaxDepth: false
+    });
+
+    ['composition models', 'temperature models'].forEach(modKey => {
+      if(Array.isArray(f[modKey])) {
+        f[modKey].forEach((mod, mi) => {
+          if(Array.isArray(mod['max depth'])) {
+            mod['max depth'].forEach((mdItem, mdi) => {
+              if(Array.isArray(mdItem) && mdItem.length === 2 && Array.isArray(mdItem[1])) {
+                let mdCoords = mdItem[1];
+                if(mdCoords.length > 0 && Array.isArray(mdCoords[0]) && mdCoords[0].length === 2) {
+                  const subCoords = mdCoords.map(p=>({x:p[0], y:p[1]}));
+                  subCoords.forEach(p=>allPts.push(p));
+                  S.features.push({
+                    rIdx: S.features.length,
+                    isMain: false,
+                    isMaxDepth: true,
+                    fi: fi,
+                    mi: mi,
+                    mdi: mdi,
+                    modKey: modKey,
+                    name: `${f.name||`F${fi}`} - ${mod.model||'mod'} max depth`,
+                    coords: subCoords,
+                    center: {x:0, y:0},
+                    isSlab: false,
+                    color: getColor(fi)
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  });
+
+  if(!allPts.length) { S.bbox = null; return; }
+  const xs=allPts.map(p=>p.x), ys=allPts.map(p=>p.y);
+  S.bbox={minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)};
+}
+
+function pushHistory(){
+  S.history.push(deepClone(S.editedData));
+  $('undoBtn').disabled = false;
+  $('resetEditBtn').disabled = false;
+}
+
+$('undoBtn').onclick = function(){
+  if(!S.history.length) return;
+  S.editedData = S.history.pop();
+  if(!S.history.length){ this.disabled = true; }
+  buildFeatures();
+  updateAll();
+};
+
+$('resetEditBtn').onclick = function(){
+  S.editedData = deepClone(S.originalData);
+  S.history = [];
+  S.selectedFeature = null;
+  S.selectedPoint = null;
+  S.hoverPoint = null;
+  S.hoverFeature = null;
+  $('undoBtn').disabled = true;
+  $('resetEditBtn').disabled = true;
+  buildFeatures();
+  updateAll();
+  setStatus('ok',t('st.resetDone'));
+};
+
+function buildLegend(){
+  const el = $('legend');
+  const mainFeatures = S.features.filter(f => f.isMain);
+  el.style.display = mainFeatures.length ? 'block' : 'none';
+  el.innerHTML = '';
+  mainFeatures.forEach(f=>{
+    const row = document.createElement('div');
+    const isSel = (S.selectedFeature != null && S.features[S.selectedFeature].fi === f.fi);
+    const isHid = S.hiddenFeatures.has(f.fi);
+    row.className = `legend-row${isSel?' selected':''}${isHid?' hidden':''}`;
+    row.innerHTML = `<div class="legend-dot" style="background:${isHid?'#444':f.color}"></div><span>${f.name}</span>`;
+    row.addEventListener('click', e=>{
+      if(e.shiftKey){
+        if(S.hiddenFeatures.has(f.fi)) S.hiddenFeatures.delete(f.fi);
+        else S.hiddenFeatures.add(f.fi);
+      } else {
+        S.selectedFeature = isSel ? null : f.rIdx;
+        S.selectedPoint = null;
+        S.pendingScrollFi = isSel ? null : f.fi;
+      }
+      updateAll();
+    });
+    el.appendChild(row);
+  });
+}
+
+function scrollFeatureIntoView(fi, {flash=true} = {}){
+  const box = $('wbOutput');
+  const el = document.getElementById('feat-block-' + fi);
+  if(!box || !el) return;
+  const boxRect = box.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const pad = 12;
+  const above = elRect.top < boxRect.top + pad;
+  const below = elRect.bottom > boxRect.bottom - pad;
+  if(above || below){
+    const delta = elRect.top - boxRect.top - box.clientHeight * 0.18;
+    box.scrollTop += delta;
+  }
+  if(flash){
+    el.classList.remove('flash-feat');
+    // restart CSS animation
+    void el.offsetWidth;
+    el.classList.add('flash-feat');
+  }
+}
+
+function updateSelInfo(){
+  const el = $('selInfo');
+  if(S.selectedPoint){
+    const {rIdx,ci} = S.selectedPoint;
+    const fObj = S.features[rIdx];
+    let pObj = fObj.coords[ci];
+    el.className = 'active';
+    el.textContent =
+      `● ${fObj.name}  ${t('lbl.point')} #${ci}\n` +
+      `  X: ${pObj.x.toFixed(4)}\n` +
+      `  Y: ${pObj.y.toFixed(4)}`;
+  } else if(S.selectedFeature!=null){
+    const f = S.features[S.selectedFeature];
+    el.className = 'active';
+    el.textContent = `▶ ${f.name}\n  ${f.coords.length} ${t('lbl.points')}`;
+  } else {
+    el.className = '';
+    el.textContent = '';
+  }
+}
+
+function buildWBOutput(){
+  const data = S.editedData;
+  const box = $('wbOutput');
+  if(!data){ box.innerHTML='<span style="color:var(--text-dim)">'+t('out.empty')+'</span>'; return; }
+
+  const prevScroll = box.scrollTop;
+  const doScrollFi = S.pendingScrollFi;
+
+  let styles = '';
+  const mainFeatures = S.features.filter(f => f.isMain);
+  mainFeatures.forEach(f=>{
+    const h = (f.fi*137.508)%360;
+    styles += `.fc-${f.fi}{color:hsl(${h},80%,68%);transition:all .15s;}`; 
+    styles += `.fc-${f.fi}.sel{color:hsl(${h},95%,82%);font-weight:700;}`;
+    styles += `.fc-${f.fi}.sel-pt{background:hsla(${h},80%,50%,.18);border-radius:2px;padding:0 1px;}`;
+    styles += `.fc-${f.fi}.dim{color:hsl(${h},40%,38%);}`;
+    styles += `.fc-${f.fi}.hov{background:hsla(${h},80%,50%,.25);border-radius:2px;}`;
+  });
+  let styleEl = document.getElementById('dyn-styles');
+  if(!styleEl){ styleEl=document.createElement('style'); styleEl.id='dyn-styles'; document.head.appendChild(styleEl); }
+  styleEl.textContent = styles;
+
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const activeFi = (S.selectedFeature!=null && S.features[S.selectedFeature])
+    ? S.features[S.selectedFeature].fi : -1;
+  
+  function rec(node, ind, path) {
+    if (Array.isArray(node)) {
+      if (node.length===0) return '<span class="tok-punct">[]</span>';
+      
+      let allPrim = node.every(x => typeof x !== 'object');
+      if (allPrim) {
+        let rIdxMatch = -1, ciMatch = -1;
+        let isClickablePt = false;
+        
+        if (path[0] === 'features' && typeof path[1] === 'number') {
+           let fi = path[1];
+           if (path[2] === 'coordinates' && typeof path[3] === 'number') {
+              isClickablePt = true;
+              rIdxMatch = S.features.findIndex(f => f.isMain && f.fi === fi);
+              ciMatch = path[3];
+           }
+           else if (
+              path.length >= 8 &&
+              ['composition models', 'temperature models'].includes(path[2]) &&
+              path[4] === 'max depth' &&
+              path[6] === 1 &&
+              typeof path[7] === 'number'
+           ) {
+              isClickablePt = true;
+              rIdxMatch = S.features.findIndex(f => f.isMaxDepth && f.fi === fi && f.mi === path[3] && f.mdi === path[5] && f.modKey === path[2]);
+              ciMatch = path[7];
+           }
+        }
+        
+        let inner = node.map((x, i) => {
+           let sVal = (typeof x === 'number') ? fm(x) : (typeof x === 'string' ? `"${x}"` : String(x));
+           let fi = path[1] !== undefined ? path[1] : -1;
+           
+           if (isClickablePt && rIdxMatch >= 0) {
+              let isSelPt = S.selectedPoint && S.selectedPoint.rIdx === rIdxMatch && S.selectedPoint.ci === ciMatch;
+              let isHovPt = S.hoverPoint && S.hoverPoint.rIdx === rIdxMatch && S.hoverPoint.ci === ciMatch;
+              
+              let cls = `fc-${fi}`;
+              if (isSelPt) cls += ' sel sel-pt';
+              else if (S.hiddenFeatures.has(fi)) cls += ' dim';
+              else if (S.selectedFeature === rIdxMatch || (S.selectedFeature!=null && S.features[S.selectedFeature].fi===fi)) cls += ' sel';
+              if (isHovPt) cls += ' hov';
+              
+              return `<span class="${cls}" data-ridx="${rIdxMatch}" data-ci="${ciMatch}" data-hoverpt="1" style="cursor:pointer; display:inline-block;">${esc(sVal)}</span>`;
+           } else if (typeof x === 'number') {
+              let hc = (fi >= 0) ? ` data-fi="${fi}" data-hoverfeat="1" style="cursor:pointer;"` : '';
+              let sCls = 'tok-num'; if(fi>=0 && S.hoverFeature != null && S.features[S.hoverFeature] && S.features[S.hoverFeature].fi===fi) sCls+=' hov';
+              return `<span class="${sCls}"${hc}>${esc(sVal)}</span>`;
+           } else if (typeof x === 'string') {
+              return `<span class="tok-str">${esc(sVal)}</span>`;
+           } else {
+              return `<span class="tok-punct">${esc(sVal)}</span>`;
+           }
+        }).join('<span class="tok-punct">, </span>');
+        
+        return '<span class="tok-punct">[</span>' + inner + '<span class="tok-punct">]</span>';
+      }
+      
+      let res = '<span class="tok-punct">[\n</span>';
+      for (let i=0; i<node.length; i++) {
+        res += ind + '  ' + rec(node[i], ind + '  ', [...path, i]) + (i<node.length-1 ? '<span class="tok-punct">,</span>' : '') + '\n';
+      }
+      res += ind + '<span class="tok-punct">]</span>';
+      return res;
+    } else if (node !== null && typeof node === 'object') {
+      let keys = Object.keys(node);
+      if (keys.length===0) return '<span class="tok-punct">{}</span>';
+      let res = '<span class="tok-punct">{\n</span>';
+      for (let i=0; i<keys.length; i++) {
+        let k = keys[i];
+        let fi = path[1] !== undefined ? path[1] : -1;
+        let hc = (fi>=0) ? ` data-fi="${fi}" data-hoverfeat="1" style="cursor:pointer;"` : '';
+        let sCls = 'tok-key'; if(fi>=0 && S.hoverFeature != null && S.features[S.hoverFeature] && S.features[S.hoverFeature].fi===fi) sCls+=' hov';
+        let pK = `<span class="${sCls}" ${hc}>"${esc(k)}"</span>`;
+        res += ind + '  ' + pK + '<span class="tok-punct">: </span>' + rec(node[k], ind + '  ', [...path, k]) + (i<keys.length-1 ? '<span class="tok-punct">,</span>' : '') + '\n';
+      }
+      res += ind + '<span class="tok-punct">}</span>';
+      // Wrap each features[i] object so legend/canvas select can scroll + highlight it
+      if (path[0] === 'features' && typeof path[1] === 'number' && path.length === 2) {
+        const fi = path[1];
+        const active = (activeFi === fi) ? ' active-feat' : '';
+        return `<div id="feat-block-${fi}" class="feat-block${active}" data-fi="${fi}">${res}</div>`;
+      }
+      return res;
+    } else if (typeof node === 'number') {
+      let fi = path[1] !== undefined ? path[1] : -1;
+      let hp = fi>=0 ? ` data-fi="${fi}" data-hoverfeat="1" style="cursor:pointer;"` : '';
+      let sCls = 'tok-num'; if(fi>=0 && S.hoverFeature != null && S.features[S.hoverFeature] && S.features[S.hoverFeature].fi===fi) sCls+=' hov';
+      return `<span class="${sCls}"${hp}>${esc(fm(node))}</span>`;
+    } else if (typeof node === 'string') {
+      return `<span class="tok-str">"${esc(node)}"</span>`;
+    } else {
+      return `<span class="tok-punct">${esc(String(node))}</span>`;
+    }
+  }
+  
+  box.innerHTML = rec(data, '', []);
+
+  if (doScrollFi != null) {
+    S.pendingScrollFi = null;
+    // next frame so layout is ready
+    requestAnimationFrame(() => scrollFeatureIntoView(doScrollFi, {flash: true}));
+  } else {
+    box.scrollTop = prevScroll;
+  }
+}
+
+$('wbOutput').onmouseover = (e) => {
+  let t = e.target;
+  if(t.dataset.hoverpt) {
+    S.hoverPoint = { rIdx: parseInt(t.dataset.ridx), ci: parseInt(t.dataset.ci) };
+    draw();
+    buildWBOutput();
+  } else if (t.dataset.hoverfeat) {
+    let fi = parseInt(t.dataset.fi);
+    S.hoverFeature = S.features.findIndex(f => f.isMain && f.fi === fi);
+    draw();
+    buildWBOutput();
+  }
+};
+$('wbOutput').onmouseout = (e) => {
+  let t = e.target;
+  if(t.dataset.hoverpt || t.dataset.hoverfeat) {
+    S.hoverPoint = null;
+    S.hoverFeature = null;
+    draw();
+    buildWBOutput();
+  }
+};
+$('wbOutput').onclick = (e) => {
+  let t = e.target;
+  if(t.dataset.hoverpt) {
+    S.selectedPoint = { rIdx: parseInt(t.dataset.ridx), ci: parseInt(t.dataset.ci) };
+    S.selectedFeature = parseInt(t.dataset.ridx);
+    // already in right panel — highlight only, soft scroll
+    const f = S.features[S.selectedFeature];
+    S.pendingScrollFi = f ? f.fi : null;
+    updateAll();
+  } else if(t.dataset.hoverfeat) {
+    let fi = parseInt(t.dataset.fi);
+    S.selectedFeature = S.features.findIndex(f => f.isMain && f.fi === fi);
+    S.selectedPoint = null;
+    S.pendingScrollFi = fi;
+    updateAll();
+  }
+};
+
+$('copyBtn').onclick = function(){
+  if(!S.editedData){ return; }
+  
+  function genPlainText(node, indStr) {
+    if (Array.isArray(node)) {
+      if (node.length === 0) return '[]';
+      let allPrim = node.every(x => typeof x !== 'object');
+      if (allPrim) return '[' + node.map(x => typeof x === 'number' ? fm(x) : (typeof x === 'string'?`"${x}"`:String(x))).join(', ') + ']';
+      let res = '[\n';
+      for (let i=0; i<node.length; i++){ res += indStr + '  ' + genPlainText(node[i], indStr + '  ') + (i<node.length-1?',':'') + '\n'; }
+      return res + indStr + ']';
+    } else if (node !== null && typeof node === 'object') {
+      let keys = Object.keys(node);
+      if (keys.length === 0) return '{}';
+      let res = '{\n';
+      for(let i=0; i<keys.length; i++){ res += indStr + '  "' + keys[i] + '": ' + genPlainText(node[keys[i]], indStr + '  ') + (i<keys.length-1?',':'') + '\n'; }
+      return res + indStr + '}';
+    } else if (typeof node === 'number') { return fm(node);
+    } else if (typeof node === 'string') { return `"${node}"`;
+    } else { return String(node); }
+  }
+  
+  const text = genPlainText(S.editedData, '');
+  navigator.clipboard.writeText(text).then(()=>{
+    this.textContent = t('btn.copied');
+    setTimeout(()=>{ this.textContent = t('btn.copy'); }, 1800);
+  });
+};
+
+function draw(){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(!S.bbox) return;
+
+  ctx.save();
+  ctx.translate(S.view.ox, S.view.oy);
+  ctx.scale(S.view.scale, S.view.scale);
+
+  S.features.forEach(f=>{
+    if(S.hiddenFeatures.has(f.fi)) return;
+    const isSel = S.selectedFeature === f.rIdx;
+    const isLayerSel = S.selectedFeature != null && S.features[S.selectedFeature].fi === f.fi;
+    const isHovFeat = S.hoverFeature != null && S.features[S.hoverFeature].fi === f.fi;
+    const isDim = S.selectedFeature != null && !isLayerSel && !isHovFeat;
+    const alpha = isDim ? 0.25 : 1;
+
+    ctx.beginPath();
+    f.coords.forEach((p,i)=>{
+      const ly = S.bbox.maxY - p.y + S.bbox.minY;
+      i===0 ? ctx.moveTo(p.x, ly) : ctx.lineTo(p.x, ly);
+    });
+
+    if(!f.isMaxDepth && !f.isSlab) {
+      ctx.closePath();
+      ctx.fillStyle = getColor(f.fi, isSel ? 0.18 : isHovFeat ? 0.12 : 0.07);
+      ctx.fill();
+    }
+
+    const lw = (f.isSlab ? 3.5 : isSel ? 2.5 : 1.8) / S.view.scale;
+    let strokeCol = isSel ? brighten(f.color) : f.color;
+    if(alpha < 1) strokeCol = getColor(f.fi, alpha);
+    ctx.strokeStyle = strokeCol;
+    ctx.lineWidth = lw;
+    
+    if(f.isMaxDepth) ctx.setLineDash([10/S.view.scale, 8/S.view.scale]);
+    else if(isDim) ctx.setLineDash([4/S.view.scale, 4/S.view.scale]);
+    else ctx.setLineDash([]);
+    
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    f.coords.forEach((p,ci)=>{
+      const ly = S.bbox.maxY - p.y + S.bbox.minY;
+      const isSelPt = S.selectedPoint && S.selectedPoint.rIdx===f.rIdx && S.selectedPoint.ci===ci;
+      const isHovPt = S.hoverPoint   && S.hoverPoint.rIdx===f.rIdx   && S.hoverPoint.ci===ci;
+      const r = Math.abs((isSelPt ? 7 : isHovPt ? 5.5 : 3)/S.view.scale);
+
+      ctx.beginPath();
+      ctx.arc(p.x, ly, r, 0, Math.PI*2);
+      if(isSelPt){
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = f.color;
+        ctx.lineWidth = 2/S.view.scale;
+        ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillStyle = isDim ? getColor(f.fi, .3) : (isHovPt ? '#fff' : strokeCol);
+        ctx.fill();
+      }
+    });
+
+    if(isSel || S.selectedFeature==null){
+      if(!f.isMaxDepth || isSel) {
+        let lx, ly;
+        if (f.isMaxDepth) {
+           lx = f.coords[0].x;
+           ly = S.bbox.maxY - f.coords[0].y + S.bbox.minY;
+        } else {
+           lx = f.center.x;
+           ly = S.bbox.maxY - f.center.y + S.bbox.minY;
+        }
+        ctx.font = `bold ${13/S.view.scale}px Segoe UI`;
+        ctx.fillStyle = strokeCol;
+        ctx.textAlign = f.isMaxDepth ? 'left' : 'center';
+        ctx.shadowColor = 'rgba(0,0,0,.7)';
+        ctx.shadowBlur = 4/S.view.scale;
+        ctx.fillText(f.name, lx, ly - 10/S.view.scale);
+        ctx.shadowBlur = 0;
+      }
+    }
+  });
+
+  ctx.restore();
+  drawSelectedPointLabel();
+  drawSectionLineOnMap();
+  drawScaleBar(W,H);
+}
+
+function drawSelectedPointLabel(){
+  if(!S.selectedPoint) return;
+  const { rIdx, ci } = S.selectedPoint;
+  const feature = S.features[rIdx];
+  if(!feature || S.hiddenFeatures.has(feature.fi)) return;
+
+  const point = feature.coords[ci];
+  if(!point) return;
+
+  const screen = worldToScreen(point.x, point.y);
+  const labelLines = [`X: ${point.x.toFixed(4)}`, `Y: ${point.y.toFixed(4)}`];
+  const paddingX = 8;
+  const paddingY = 6;
+  const lineHeight = 15;
+  const labelX = screen.x + 12;
+  const labelY = screen.y - 34;
+
+  ctx.save();
+  ctx.font = '12px Consolas';
+  const textWidth = Math.max(...labelLines.map(line => ctx.measureText(line).width));
+  const boxWidth = textWidth + paddingX * 2;
+  const boxHeight = labelLines.length * lineHeight + paddingY * 2;
+
+  ctx.fillStyle = 'rgba(12, 14, 22, 0.92)';
+  ctx.strokeStyle = feature.color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(labelX, labelY, boxWidth, boxHeight, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#eef2ff';
+  labelLines.forEach((line, idx) => {
+    ctx.fillText(line, labelX + paddingX, labelY + paddingY + 11 + idx * lineHeight);
+  });
+  ctx.restore();
+}
+
+function drawScaleBar(W,H){
+  const target=120, wd=target/S.view.scale;
+  const mag=Math.pow(10,Math.floor(Math.log10(wd)));
+  const fd=wd/mag;
+  const rd=mag*(fd<2?1:fd<5?2:5);
+  const bw=rd*S.view.scale;
+  const x=22, y=H-24;
+  ctx.strokeStyle='rgba(255,255,255,.6)';
+  ctx.fillStyle='rgba(255,255,255,.6)';
+  ctx.lineWidth=1.5;
+  ctx.font='10px Consolas';
+  ctx.beginPath();
+  ctx.moveTo(x,y-8); ctx.lineTo(x,y); ctx.lineTo(x+bw,y); ctx.lineTo(x+bw,y-8);
+  ctx.stroke();
+  ctx.fillText(`${rd.toLocaleString()} units`,x,y-12);
+}
+
+$('modeBtn').onclick = function(){
+  S.editMode = !S.editMode;
+  this.className = `canvas-btn${S.editMode?' edit-mode':''}`;
+  this.textContent = S.editMode ? t('btn.editing') : t('btn.edit');
+  if(!S.editMode){ S.selectedPoint=null; updateAll(); }
+};
+
+function findNearestPoint(mx, my, threshold=18){
+  let best=null, bestD=threshold;
+  S.features.forEach(f=>{
+    if(S.hiddenFeatures.has(f.fi)) return;
+    f.coords.forEach((p,ci)=>{
+      const s = worldToScreen(p.x,p.y);
+      const d = Math.hypot(mx-s.x, my-s.y);
+      if(d<bestD){ bestD=d; best={rIdx:f.rIdx, ci}; }
+    });
+  });
+  return best;
+}
+
+canvas.addEventListener('mousedown', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+
+  if(S.section.picking) return;          // 畫剖面線時不平移
+  // 編輯模式下，模型點位優先於剖面端點
+  const grab = (S.editMode && findNearestPoint(mx,my)) ? null : hitSectionEndpoint(mx,my);
+  if(grab){
+    S.section.dragEnd = grab;
+    canvas.className = 'dragging';
+    return;
+  }
+
+  if(S.editMode){
+    const pt=findNearestPoint(mx,my);
+    if(pt){
+      pushHistory();
+      S.draggingPoint=pt;
+      S.selectedPoint=pt;
+      S.selectedFeature=pt.rIdx;
+      canvas.className='dragging';
+      updateAll();
+      return;
+    }
+  }
+  S.isPanning=true;
+  S.panStart={x:e.clientX,y:e.clientY};
+  canvas.className='dragging';
+});
+
+canvas.addEventListener('mousemove', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+
+  if(S.section.dragEnd){
+    const {id,key}=S.section.dragEnd;
+    const w=screenToWorld(mx,my);
+    S.section.lines[id][key] = {x:w.x, y:w.y};
+    S.section.eqRef=id; $('secEqRef').value=id;
+    applyEqualLength();
+    updateSectionInfo();
+    draw();
+    scheduleSectionCompute(220);
+    return;
+  }
+  if(S.section.picking===2){
+    const w=screenToWorld(mx,my);
+    S.section.lines[S.section.pickId].preview = {x:w.x, y:w.y};
+    updateSectionInfo();
+    draw();
+    return;
+  }
+  if(S.section.picking===1){
+    canvas.className='';
+    return;
+  }
+  if(!S.editMode && !S.isPanning && hitSectionEndpoint(mx,my)){
+    canvas.className='over-point';
+  } else if(!S.editMode && !S.isPanning && canvas.className==='over-point'){
+    canvas.className='';
+  }
+
+  if(S.draggingPoint){
+    const w=screenToWorld(mx,my);
+    const {rIdx,ci}=S.draggingPoint;
+    const fObj=S.features[rIdx];
+    let coordArr;
+    if(fObj.isMain) coordArr = S.editedData.features[fObj.fi].coordinates;
+    else if(fObj.isMaxDepth) coordArr = S.editedData.features[fObj.fi][fObj.modKey][fObj.mi]['max depth'][fObj.mdi][1];
+    
+    coordArr[ci][0]=parseFloat(w.x.toFixed(4));
+    coordArr[ci][1]=parseFloat(w.y.toFixed(4));
+    buildFeatures();
+    updateAll();
+    return;
+  }
+  if(S.isPanning){
+    S.view.ox += e.clientX-S.panStart.x;
+    S.view.oy += e.clientY-S.panStart.y;
+    S.panStart={x:e.clientX,y:e.clientY};
+    draw();
+    return;
+  }
+  if(S.editMode){
+    const pt=findNearestPoint(mx,my);
+    const changed = JSON.stringify(pt)!==JSON.stringify(S.hoverPoint);
+    if(changed){
+      S.hoverPoint=pt;
+      canvas.className = pt ? 'over-point' : '';
+      draw();
+      buildWBOutput();
+    }
+  }
+});
+
+window.addEventListener('mouseup', ()=>{
+  if(S.section.dragEnd){
+    S.section.dragEnd=null;
+    canvas.className='';
+    scheduleSectionCompute(0);
+  }
+  if(S.draggingPoint){
+    S.draggingPoint=null;
+    canvas.className='';
+    buildWBOutput();
+  }
+  S.isPanning=false;
+  canvas.className='';
+});
+
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const f=e.deltaY>0?0.88:1.14;
+  S.view.ox = e.offsetX-(e.offsetX-S.view.ox)*f;
+  S.view.oy = e.offsetY-(e.offsetY-S.view.oy)*f;
+  S.view.scale*=f;
+  draw();
+},{passive:false});
+
+canvas.addEventListener('click', e=>{
+  if(S.draggingPoint || S.section.dragEnd) return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+
+  if(S.section.picking){
+    const id=S.section.pickId, L=S.section.lines[id];
+    const w=screenToWorld(mx,my);
+    if(S.section.picking===1){
+      L.p1={x:w.x,y:w.y};
+      L.p2=null;
+      L.preview={x:w.x,y:w.y};
+      S.section.picking=2;
+      setStatus('ok', t('st.pick2').replace(/\{id\}/g, id));
+      updateSectionInfo();
+      draw();
+    } else {
+      L.preview=null;
+      setStatus('ok', t('st.secSet').replace(/\{id\}/g, id));
+      setSectionLine(id, L.p1, {x:w.x,y:w.y});
+    }
+    return;
+  }
+
+  const pt=findNearestPoint(mx,my);
+  if(pt){
+    const isSamePoint = S.selectedPoint && S.selectedPoint.rIdx===pt.rIdx && S.selectedPoint.ci===pt.ci;
+    S.selectedPoint = isSamePoint ? null : pt;
+    S.selectedFeature = isSamePoint ? null : pt.rIdx;
+    if(!isSamePoint){
+      const f = S.features[pt.rIdx];
+      S.pendingScrollFi = f ? f.fi : null;
+    } else {
+      S.pendingScrollFi = null;
+    }
+    updateAll();
+    return;
+  }
+  S.selectedPoint=null; S.selectedFeature=null; S.pendingScrollFi=null;
+  updateAll();
+});
+
+$('resetViewBtn').onclick = ()=>{ if(S.bbox){autoFit();draw();} };
+
+$('jsonInput').addEventListener('input', () => {
+  clearInputErrorHighlight();
+  syncInputDecorations();
+});
+$('jsonInput').addEventListener('scroll', syncInputDecorations);
+
+function autoFit(){
+  const bb=S.bbox;
+  const W=Math.max(60,canvas.width), H=Math.max(60,canvas.height);
+  const padW=Math.max(20, Math.min(120, W*0.15)), padH=Math.max(20, Math.min(120, H*0.15));
+  let s=Math.min((W-padW)/(Math.abs(bb.maxX-bb.minX)||1),(H-padH)/(Math.abs(bb.maxY-bb.minY)||1));
+  if(!isFinite(s) || s<=0) s=1;
+  S.view.scale=s;
+  S.view.ox=W/2-(bb.minX+bb.maxX)/2*s;
+  S.view.oy=H/2-(bb.minY+bb.maxY)/2*s;
+}
+
+function updateAll(){
+  draw();
+  buildLegend();
+  updateSelInfo();
+  buildWBOutput();
+  $('modeBtn').style.display = S.features.length ? 'block' : 'none';
+  $('sectionBtn').style.display = S.features.length ? 'block' : 'none';
+  scheduleSectionCompute(160);
+}
+
+function resize(){
+  const wrap=canvas.parentElement;
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  if(w>0 && h>0 && (canvas.width!==w || canvas.height!==h)){
+    canvas.width=w; canvas.height=h;
+  }
+  if(S.bbox) draw();
+  resizeSectionCanvas();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('load', ()=>{ resize(); if(S.bbox && S.view.scale<=0) autoFit(); });
+
+/* ══════════════════════════════════════════════════════════════════
+   CROSS-SECTION 模組 — 沿任意 A–A′ 線切剖面，並著色 composition 材料
+   ══════════════════════════════════════════════════════════════════ */
+
+const DEG = Math.PI/180, R_EARTH = 6371000;
+
+const COMP_PALETTE = [
+  '#4f8ef7','#f76f6f','#3ecf8e','#f5c842','#c792ea','#ff9f43',
+  '#2ee6d6','#ff7ab6','#a0d911','#8b9dc3','#e17055','#00b894',
+  '#6c5ce7','#fdcb6e','#d63031','#0984e3','#badc58','#eb4d4b'
+];
+function compColor(id){
+  const i = ((id % COMP_PALETTE.length) + COMP_PALETTE.length) % COMP_PALETTE.length;
+  return COMP_PALETTE[i];
+}
+
+const SEC_LINE_COLOR = { A:'#f5c842', B:'#2ee6d6' };
+function newSectionLine(id){
+  return {
+    id, on:(id==='A'), color:SEC_LINE_COLOR[id],
+    p1:null, p2:null, preview:null,
+    nx:0, nz:0, total:0, ms:0,
+    fiGrid:null, compGrid:null, raster:null, plot:null, prep:null, frame:null,
+    compsUsed:[], featsUsed:[], hover:null
+  };
+}
+S.section = {
+  open:false,
+  picking:0,            // 0 = 無, 1 = 等起點, 2 = 等終點
+  pickId:null,          // 'A' | 'B'
+  dragEnd:null,         // { id, key }
+  maxDepth:400000,      // m
+  res:480,
+  equalLen:false, eqRef:'A',
+  hiddenComps:new Set(),
+  timer:null,
+  lines:{ A:newSectionLine('A'), B:newSectionLine('B') }
+};
+function secLines(){ return [S.section.lines.A, S.section.lines.B]; }
+function secActiveLines(){ return secLines().filter(L=>L.on && L.p1 && L.p2); }
+
+/* ── 座標系統 / 局部平面座標 ────────────────────────────── */
+function coordIsSpherical(){
+  const cs = S.editedData && S.editedData['coordinate system'];
+  if(!cs) return false;
+  const m = (typeof cs === 'string') ? cs : cs.model;
+  return typeof m === 'string' && m.toLowerCase().includes('spherical');
+}
+let SEC_ORIGIN = {x:0,y:0}, SEC_SPH = false, SEC_COSLAT = 1;
+function setLocalFrame(o){
+  SEC_ORIGIN = {x:o.x, y:o.y};
+  SEC_SPH = coordIsSpherical();
+  SEC_COSLAT = SEC_SPH ? Math.max(0.02, Math.cos(o.y*DEG)) : 1;
+  return { o:SEC_ORIGIN, sph:SEC_SPH, cos:SEC_COSLAT };
+}
+// 每條剖面線的 prep 是在自己的局部座標框下建的，查詢前必須切回同一個框
+function useFrame(fr){
+  if(!fr) return;
+  SEC_ORIGIN = fr.o; SEC_SPH = fr.sph; SEC_COSLAT = fr.cos;
+}
+function toLocal(p){
+  const x = Array.isArray(p) ? p[0] : p.x;
+  const y = Array.isArray(p) ? p[1] : p.y;
+  if(SEC_SPH) return { x:(x-SEC_ORIGIN.x)*DEG*R_EARTH*SEC_COSLAT, y:(y-SEC_ORIGIN.y)*DEG*R_EARTH };
+  return { x:x-SEC_ORIGIN.x, y:y-SEC_ORIGIN.y };
+}
+function worldDist(a,b){
+  if(coordIsSpherical()){
+    const f1=a.y*DEG, f2=b.y*DEG, df=(b.y-a.y)*DEG, dl=(b.x-a.x)*DEG;
+    const h=Math.sin(df/2)**2 + Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+    return 2*R_EARTH*Math.asin(Math.min(1,Math.sqrt(h)));
+  }
+  return Math.hypot(b.x-a.x, b.y-a.y);
+}
+
+/* ── 小工具 ─────────────────────────────────────────────── */
+function num(v, dflt){
+  if(typeof v === 'number') return v;
+  if(Array.isArray(v) && typeof v[0] === 'number') return v[0];
+  return dflt;
+}
+function pair(v, dflt){
+  if(typeof v === 'number') return [v,v];
+  if(Array.isArray(v)){
+    const a = v.filter(x=>typeof x==='number');
+    if(a.length>=2) return [a[0],a[1]];
+    if(a.length===1) return [a[0],a[0]];
+  }
+  return dflt;
+}
+function pointInPoly(pt, poly){
+  let inside=false;
+  for(let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const pi=poly[i], pj=poly[j];
+    if(!Array.isArray(pi)||!Array.isArray(pj)) continue;
+    const xi=pi[0], yi=pi[1], xj=pj[0], yj=pj[1];
+    if(((yi>pt.y)!==(yj>pt.y)) && (pt.x < (xj-xi)*(pt.y-yi)/((yj-yi)||1e-30)+xi)) inside=!inside;
+  }
+  return inside;
+}
+// GWB 的「一個值 或 一串 [值, 區域多邊形]」語法
+function surfaceValue(spec, pt, dflt){
+  if(spec==null) return dflt;
+  if(typeof spec === 'number') return spec;
+  if(!Array.isArray(spec)) return dflt;
+  let global=dflt, hasGlobal=false, areaVal=null;
+  for(const item of spec){
+    if(typeof item === 'number'){ if(!hasGlobal){ global=item; hasGlobal=true; } continue; }
+    if(!Array.isArray(item)) continue;
+    const v = (typeof item[0]==='number') ? item[0] : null;
+    if(v===null) continue;
+    const area = item[1];
+    if(Array.isArray(area) && area.length && Array.isArray(area[0])){
+      if(pointInPoly(pt, area)) areaVal = v;      // 後面的區域覆蓋前面的
+    } else if(!hasGlobal){ global=v; hasGlobal=true; }
+  }
+  return areaVal!==null ? areaVal : global;
+}
+function pickComp(mod){
+  const comps = mod.compositions;
+  if(!Array.isArray(comps) || !comps.length) return null;
+  const fr = Array.isArray(mod.fractions) ? mod.fractions : [];
+  let bi=0, bf = fr.length ? (fr[0]!==undefined?fr[0]:1) : 1;
+  for(let i=1;i<comps.length;i++){
+    const v = (fr[i]!==undefined) ? fr[i] : (fr.length?0:1);
+    if(v>bf){ bf=v; bi=i; }
+  }
+  return { comp:comps[bi], frac:bf, comps, fracs:fr };
+}
+function compFromModels(models, test){
+  if(!Array.isArray(models)) return null;
+  let res=null;
+  for(const mod of models){
+    if(!mod || typeof mod!=='object') continue;
+    if(!test(mod)) continue;
+    const op = mod.operation || 'replace';
+    if(op === 'subtract'){ res=null; continue; }
+    const p = pickComp(mod);
+    if(!p) continue;
+    res = Object.assign({ modelName: mod.model || 'uniform' }, p);
+  }
+  return res;
+}
+
+/* ── feature 幾何 ───────────────────────────────────────── */
+function featureKind(f){
+  const m = String(f.model||'').toLowerCase();
+  if(m.includes('subducting')) return 'slab';
+  if(m.includes('fault'))      return 'fault';
+  return 'area';
+}
+
+// 由 segments 建出 slab / fault 的中心（或頂）曲線，座標系 (h = 離 trench 沿 dip 方向, v = 深度)
+function buildSlabGeom(f){
+  const segs = Array.isArray(f.segments) ? f.segments : [];
+  const pts=[{h:0,v:0,s:0}], bounds=[];
+  let s=0;
+  segs.forEach(seg=>{
+    if(!seg || typeof seg!=='object') return;
+    const L = num(seg.length, 0);
+    if(!(L>0)) return;
+    const ang = pair(seg.angle, [0,0]);
+    const th  = pair(seg.thickness, [0,0]);
+    const tt  = pair(seg['top truncation'], [0,0]);
+    const n = Math.max(4, Math.min(120, Math.ceil(Math.abs(ang[1]-ang[0])/1.5)+4));
+    let last = pts[pts.length-1], h=last.h, v=last.v;
+    for(let k=1;k<=n;k++){
+      const tm=(k-0.5)/n;
+      const a=(ang[0]+(ang[1]-ang[0])*tm)*DEG, ds=L/n;
+      h += Math.cos(a)*ds;
+      v += Math.sin(a)*ds;
+      pts.push({h, v, s: s + L*k/n});
+    }
+    bounds.push({ s0:s, s1:s+L, th, tt, seg });
+    s += L;
+  });
+  return { pts, bounds, total:s };
+}
+// 投影到 trench 線（局部平面座標），回傳沿 dip 方向的帶號距離
+function projectLine(line, q, dip){
+  if(!Array.isArray(line) || line.length<2) return {ok:false};
+  let best=null;
+  for(let i=0;i<line.length-1;i++){
+    const a=line[i], b=line[i+1];
+    const dx=b.x-a.x, dy=b.y-a.y, L2=dx*dx+dy*dy;
+    if(L2===0) continue;
+    let t=((q.x-a.x)*dx+(q.y-a.y)*dy)/L2;
+    const outside = (i===0 && t<0) || (i===line.length-2 && t>1);
+    t=Math.max(0,Math.min(1,t));
+    const px=a.x+dx*t, py=a.y+dy*t;
+    const d=Math.hypot(q.x-px, q.y-py);
+    if(!best || d<best.d) best={d, px, py, dx, dy, outside};
+  }
+  if(!best) return {ok:false};
+  let nx=-best.dy, ny=best.dx;
+  const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+  if(dip){
+    const sgn=(dip.x-best.px)*nx + (dip.y-best.py)*ny;
+    if(sgn<0){ nx=-nx; ny=-ny; }
+  }
+  return { ok: !best.outside, hd: (q.x-best.px)*nx + (q.y-best.py)*ny };
+}
+// 查詢 (h, depth) 對 slab 頂面的垂直帶號距離；正 = 在頂面「下方」（板塊內部）
+function slabAt(geom, hd, depth){
+  const pts=geom.pts;
+  if(pts.length<2) return null;
+  let best=null;
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const dx=b.h-a.h, dy=b.v-a.v, L2=dx*dx+dy*dy;
+    if(L2===0) continue;
+    let t=((hd-a.h)*dx+(depth-a.v)*dy)/L2;
+    const outside = (i===0 && t<0) || (i===pts.length-2 && t>1);
+    t=Math.max(0,Math.min(1,t));
+    const ph=a.h+dx*t, pv=a.v+dy*t;
+    const d=Math.hypot(hd-ph, depth-pv);
+    if(!best || d<best.d){
+      const cross = dx*(depth-a.v) - dy*(hd-a.h);   // >0 → 位於頂面法向側（板內）
+      best={ d, s:a.s+(b.s-a.s)*t, side: cross>=0?1:-1, outside };
+    }
+  }
+  if(!best || best.outside) return null;             // 超出 slab 頭尾 → 不屬於此 feature
+  return { dz: best.d*best.side, s: best.s };
+}
+function segAt(geom, s){
+  for(const b of geom.bounds){
+    if(s>=b.s0 && s<=b.s1){
+      const span=b.s1-b.s0;
+      const fr = span>0 ? (s-b.s0)/span : 0;
+      return { b, th: b.th[0]+(b.th[1]-b.th[0])*fr, tt: b.tt[0]+(b.tt[1]-b.tt[0])*fr };
+    }
+  }
+  return null;
+}
+
+/* ── composition 判定 ───────────────────────────────────── */
+function areaFeatureComp(f, pt, depth){
+  return compFromModels(f['composition models'], mod=>{
+    const mn=surfaceValue(mod['min depth'], pt, 0);
+    const mx=surfaceValue(mod['max depth'], pt, Infinity);
+    return depth>=mn && depth<=mx;
+  });
+}
+function slabFeatureComp(f, sg, dz, depth, kind){
+  const key = (kind==='fault') ? 'distance fault center' : 'distance slab top';
+  const val = (kind==='fault') ? Math.abs(dz) : dz;
+  const test = mod=>{
+    const mn=num(mod['min '+key], -Infinity), mx=num(mod['max '+key], Infinity);
+    if(val<mn || val>mx) return false;
+    const dmn=num(mod['min depth'], -Infinity), dmx=num(mod['max depth'], Infinity);
+    return depth>=dmn && depth<=dmx;
+  };
+  let r = compFromModels(f['composition models'], test);
+  if(sg && sg.b && sg.b.seg){
+    const r2 = compFromModels(sg.b.seg['composition models'], test);
+    if(r2) r = r2;                                  // segment 層級覆蓋 feature 層級
+  }
+  return r;
+}
+
+/* ── 準備 & 計算 ────────────────────────────────────────── */
+function prepareSection(){
+  const feats = (S.editedData && Array.isArray(S.editedData.features)) ? S.editedData.features : [];
+  return feats.map((f, fi)=>{
+    const kind = featureKind(f);
+    const o = { fi, f, kind, name: f.name || `F${fi}`, color: getColor(fi) };
+    if(kind==='area'){
+      o.poly = Array.isArray(f.coordinates) ? f.coordinates : [];
+    } else {
+      o.line = (Array.isArray(f.coordinates) ? f.coordinates : []).map(toLocal);
+      o.dip  = Array.isArray(f['dip point']) ? toLocal(f['dip point']) : null;
+      o.geom = buildSlabGeom(f);
+    }
+    return o;
+  });
+}
+
+// 單點查詢（tooltip 用），t ∈ [0,1] 沿該剖面線，depth 為公尺
+function sectionProbe(L, t, depth){
+  if(!L || !L.prep || !L.p1 || !L.p2) return null;
+  useFrame(L.frame);
+  const pt = { x: L.p1.x+(L.p2.x-L.p1.x)*t, y: L.p1.y+(L.p2.y-L.p1.y)*t };
+  const loc = toLocal(pt);
+  let hit=null;
+  for(const p of L.prep){
+    if(S.hiddenFeatures.has(p.fi)) continue;
+    if(p.kind==='area'){
+      if(p.poly.length<3 || !pointInPoly(pt, p.poly)) continue;
+      const fmn=surfaceValue(p.f['min depth'], pt, null), fmx=surfaceValue(p.f['max depth'], pt, null);
+      if(fmn!=null && depth<fmn) continue;
+      if(fmx!=null && depth>fmx) continue;
+      const r=areaFeatureComp(p.f, pt, depth);
+      if(!r && !(fmn!=null || fmx!=null)) continue;
+      hit = { p, comp:r, extra:null };
+    } else {
+      const tr = projectLine(p.line, loc, p.dip);
+      if(!tr.ok) continue;
+      const sl = slabAt(p.geom, tr.hd, depth);
+      if(!sl) continue;
+      const sg = segAt(p.geom, sl.s);
+      if(!sg) continue;
+      const top = (p.kind==='fault') ? -sg.th/2 : Math.max(0, sg.tt);
+      const bot = (p.kind==='fault') ?  sg.th/2 : sg.th;
+      if(sl.dz<top || sl.dz>bot) continue;
+      hit = { p, comp: slabFeatureComp(p.f, sg, sl.dz, depth, p.kind),
+              extra: { dz: sl.dz, s: sl.s, th: sg.th } };
+    }
+  }
+  return hit;
+}
+
+function computeOneLine(L){
+  const sec=S.section;
+  L.fiGrid=null; L.compGrid=null; L.raster=null; L.prep=null;
+  L.compsUsed=[]; L.featsUsed=[];
+  if(!S.editedData || !L.on || !L.p1 || !L.p2) return;
+
+  const t0=performance.now();
+  L.frame = setLocalFrame(L.p1);
+  L.prep = prepareSection();
+  L.total = worldDist(L.p1, L.p2);
+  if(!(L.total>0)){ L.prep=null; return; }
+
+  const plot = L.plot || {w:900, h:300};
+  const nx = Math.max(60, Math.min(1400, sec.res|0));
+  let nz = Math.round(nx * (plot.h / Math.max(1, plot.w)));
+  nz = Math.max(60, Math.min(700, nz));
+  L.nx=nx; L.nz=nz;
+
+  const fiG = new Int16Array(nx*nz).fill(-1);
+  const cG  = new Int16Array(nx*nz).fill(-1);
+  const usedComp=new Set(), usedFeat=new Set();
+  const prep=L.prep;
+
+  for(let i=0;i<nx;i++){
+    const t=(i+0.5)/nx;
+    const pt={ x: L.p1.x+(L.p2.x-L.p1.x)*t, y: L.p1.y+(L.p2.y-L.p1.y)*t };
+    const loc=toLocal(pt);
+    // 每一「行」只需算一次的東西
+    const col = prep.map(p=>{
+      if(S.hiddenFeatures.has(p.fi)) return {skip:true};
+      if(p.kind==='area'){
+        if(p.poly.length<3) return {skip:true};
+        if(!pointInPoly(pt, p.poly)) return {skip:true};
+        return { inside:true,
+                 fmn: surfaceValue(p.f['min depth'], pt, null),
+                 fmx: surfaceValue(p.f['max depth'], pt, null) };
+      }
+      const tr = projectLine(p.line, loc, p.dip);
+      return tr.ok ? { tr } : { skip:true };
+    });
+
+    for(let j=0;j<nz;j++){
+      const depth=(j+0.5)/nz*sec.maxDepth;
+      let hitFi=-1, hitComp=-1;
+      for(let m=0;m<prep.length;m++){
+        const c=col[m]; if(c.skip) continue;
+        const p=prep[m];
+        if(p.kind==='area'){
+          if(c.fmn!=null && depth<c.fmn) continue;
+          if(c.fmx!=null && depth>c.fmx) continue;
+          const r=areaFeatureComp(p.f, pt, depth);
+          // 沒有 composition model 命中、又沒有明確的 feature 深度範圍 → 不遮蔽下層 feature
+          if(!r && !(c.fmn!=null || c.fmx!=null)) continue;
+          hitFi=p.fi;
+          hitComp = r ? r.comp : -1;
+        } else {
+          const sl=slabAt(p.geom, c.tr.hd, depth);
+          if(!sl) continue;
+          const sg=segAt(p.geom, sl.s);
+          if(!sg) continue;
+          const top=(p.kind==='fault') ? -sg.th/2 : Math.max(0, sg.tt);
+          const bot=(p.kind==='fault') ?  sg.th/2 : sg.th;
+          if(sl.dz<top || sl.dz>bot) continue;
+          hitFi=p.fi;
+          const r=slabFeatureComp(p.f, sg, sl.dz, depth, p.kind);
+          hitComp = r ? r.comp : -1;
+        }
+      }
+      const k=j*nx+i;
+      fiG[k]=hitFi; cG[k]=hitComp;
+      if(hitFi>=0) usedFeat.add(hitFi);
+      if(hitComp>=0) usedComp.add(hitComp);
+    }
+  }
+
+  L.fiGrid=fiG; L.compGrid=cG;
+  L.compsUsed=[...usedComp].sort((a,b)=>a-b);
+  L.featsUsed=[...usedFeat].sort((a,b)=>a-b);
+  L.ms=Math.round(performance.now()-t0);
+  paintLineRaster(L);
+}
+
+function computeSectionGrids(){
+  const sec=S.section;
+  sec.timer=null;
+  if(!sec.open){ return; }
+  secLines().forEach(computeOneLine);
+  drawSectionCanvas();
+  buildSectionLegend();
+  updateSectionInfo();
+}
+
+function scheduleSectionCompute(delay){
+  const sec=S.section;
+  if(!sec.open) return;
+  if(sec.timer) clearTimeout(sec.timer);
+  sec.timer = setTimeout(computeSectionGrids, delay==null?160:delay);
+}
+
+/* ── 光柵著色 ───────────────────────────────────────────── */
+function hexRgb(h){
+  return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+}
+function hslRgb(h,s,l){
+  h=((h%360)+360)%360;
+  const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2;
+  let r,g,b;
+  if(h<60)      [r,g,b]=[c,x,0];
+  else if(h<120)[r,g,b]=[x,c,0];
+  else if(h<180)[r,g,b]=[0,c,x];
+  else if(h<240)[r,g,b]=[0,x,c];
+  else if(h<300)[r,g,b]=[x,0,c];
+  else          [r,g,b]=[c,0,x];
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function paintLineRaster(L){
+  if(!L.fiGrid){ L.raster=null; return; }
+  const sec=S.section, nx=L.nx, nz=L.nz;
+  const cv=document.createElement('canvas'); cv.width=nx; cv.height=nz;
+  const g=cv.getContext('2d');
+  const img=g.createImageData(nx,nz), D=img.data;
+  const featCache={};
+  for(let j=0;j<nz;j++){
+    for(let i=0;i<nx;i++){
+      const k=j*nx+i, o=k*4;
+      const fi=L.fiGrid[k], comp=L.compGrid[k];
+      let col=null;
+      if(fi>=0){
+        if(comp>=0 && !sec.hiddenComps.has(comp)) col=hexRgb(compColor(comp));
+        else {
+          if(!featCache[fi]) featCache[fi]=hslRgb((fi*137.508)%360, .30, .26);
+          col=featCache[fi];                        // 有 feature 但沒 composition
+        }
+      }
+      if(!col){ D[o+3]=0; continue; }
+      const edge = (i>0 && (L.fiGrid[k-1]!==fi || L.compGrid[k-1]!==comp)) ||
+                   (j>0 && (L.fiGrid[k-nx]!==fi || L.compGrid[k-nx]!==comp));
+      const f = edge ? 0.34 : 1;
+      D[o]=Math.round(col[0]*f); D[o+1]=Math.round(col[1]*f); D[o+2]=Math.round(col[2]*f); D[o+3]=255;
+    }
+  }
+  g.putImageData(img,0,0);
+  L.raster=cv;
+}
+function repaintAllRasters(){ secLines().forEach(L=>paintLineRaster(L)); }
+
+/* ── 剖面畫布 ───────────────────────────────────────────── */
+function niceStep(range, target){
+  const raw=range/Math.max(1,target);
+  const mag=Math.pow(10, Math.floor(Math.log10(raw||1)));
+  const f=raw/mag;
+  return mag*(f<1.5?1:f<3?2:f<7?5:10);
+}
+function resizeSectionCanvas(){
+  const c=$('secCanvas'); if(!c) return;
+  const body=c.parentElement;
+  const w=body.clientWidth, h=body.clientHeight;
+  if(w<1||h<1) return;
+  if(c.width!==w || c.height!==h){ c.width=w; c.height=h; }
+  drawSectionCanvas();
+}
+// 依開啟的剖面數量切出 1 或 2 個繪圖區
+function layoutSectionPlots(W,H){
+  const shown = secLines().filter(L=>L.on);
+  const mT=22, mB=32, mL=62, mR=16;
+  if(!shown.length) return [];
+  if(shown.length===1){
+    return [{ L:shown[0], x:mL, y:mT, w:W-mL-mR, h:H-mT-mB }];
+  }
+  const half=W/2;
+  return shown.map((L,i)=>({ L, x:i*half+mL, y:mT, w:half-mL-mR, h:H-mT-mB }));
+}
+function drawSectionCanvas(){
+  const c=$('secCanvas'); if(!c) return;
+  const g=c.getContext('2d'), W=c.width, H=c.height;
+  g.clearRect(0,0,W,H);
+  const sec=S.section;
+
+  const rects=layoutSectionPlots(W,H);
+  secLines().forEach(L=>{ L.plot=null; });
+  if(!rects.length){
+    g.fillStyle='#5a6480'; g.textAlign='center'; g.textBaseline='middle';
+    g.font='13px "Microsoft JhengHei", sans-serif';
+    g.fillText(t('sec.bothOff'), W/2, H/2);
+    return;
+  }
+  let needRecompute=false;
+  rects.forEach(r=>{
+    const L=r.L;
+    const prev=L.plotPrev;
+    L.plot={x:r.x, y:r.y, w:r.w, h:r.h};
+    if(prev && (Math.abs(prev.w-r.w)>24 || Math.abs(prev.h-r.h)>24)) needRecompute=true;
+    L.plotPrev={w:r.w, h:r.h};
+    drawOnePlot(g, L, r);
+  });
+  if(needRecompute) scheduleSectionCompute(220);
+}
+function drawOnePlot(g, L, r){
+  const sec=S.section;
+  const {x:mL, y:mT, w:pw, h:ph}=r;
+  if(pw<40||ph<40) return;
+
+  g.fillStyle='#0c0e16'; g.fillRect(mL,mT,pw,ph);
+
+  // 標題
+  g.font='bold 11.5px Consolas'; g.textBaseline='bottom'; g.textAlign='left';
+  g.fillStyle=L.color;
+  g.fillText(`${L.id}–${L.id}′`, mL, mT-5);
+
+  if(!L.p1 || !L.p2){
+    g.fillStyle='#5a6480'; g.textAlign='center'; g.textBaseline='middle';
+    g.font='12.5px "Microsoft JhengHei", sans-serif';
+    g.fillText(t('sec.hint').replace(/\{id\}/g, L.id), mL+pw/2, mT+ph/2);
+    g.strokeStyle='#2a3045'; g.lineWidth=1; g.strokeRect(mL+.5, mT+.5, pw-1, ph-1);
+    return;
+  }
+  if(L.raster){
+    g.imageSmoothingEnabled=false;
+    g.drawImage(L.raster, mL, mT, pw, ph);
+  }
+
+  // 座標軸
+  const totKm=L.total/1000, depKm=sec.maxDepth/1000;
+  const xStep=niceStep(totKm, Math.max(3, Math.round(pw/110)));
+  const yStep=niceStep(depKm, Math.max(3, Math.round(ph/60)));
+  g.strokeStyle='rgba(255,255,255,.09)'; g.lineWidth=1;
+  g.fillStyle='#5a6480'; g.font='10px Consolas'; g.textBaseline='middle';
+
+  g.textAlign='right';
+  for(let d=0; d<=depKm+1e-9; d+=yStep){
+    const y=mT+(d/depKm)*ph;
+    if(y>mT+ph+.5) break;
+    g.beginPath(); g.moveTo(mL,y+.5); g.lineTo(mL+pw,y+.5); g.stroke();
+    g.fillText(`${(+d.toFixed(3)).toLocaleString()}`, mL-8, y);
+  }
+  g.save();
+  g.translate(mL-46, mT+ph/2); g.rotate(-Math.PI/2);
+  g.textAlign='center'; g.fillStyle='#5a6480'; g.font='10.5px Consolas';
+  g.fillText('depth (km)', 0, 0);
+  g.restore();
+
+  g.textAlign='center'; g.textBaseline='top';
+  for(let d=0; d<=totKm+1e-9; d+=xStep){
+    const x=mL+(d/totKm)*pw;
+    if(x>mL+pw+.5) break;
+    g.beginPath(); g.moveTo(x+.5,mT); g.lineTo(x+.5,mT+ph); g.stroke();
+    g.fillText(`${(+d.toFixed(3)).toLocaleString()}`, x, mT+ph+6);
+  }
+  g.textAlign='right';
+  g.fillText('distance (km)', mL+pw, mT+ph+18);
+
+  g.strokeStyle='#3a4260'; g.lineWidth=1;
+  g.strokeRect(mL+.5, mT+.5, pw-1, ph-1);
+
+  // 端點標記
+  g.font='bold 12px Consolas'; g.textBaseline='bottom'; g.fillStyle=L.color;
+  g.textAlign='left';  g.fillText(L.id, mL+3, mT-2);
+  g.textAlign='right'; g.fillText(L.id+'′', mL+pw-3, mT-2);
+
+  // hover 十字線
+  if(L.hover){
+    const {px,py}=L.hover;
+    g.strokeStyle='rgba(245,200,66,.75)'; g.lineWidth=1; g.setLineDash([4,3]);
+    g.beginPath(); g.moveTo(px+.5,mT); g.lineTo(px+.5,mT+ph);
+    g.moveTo(mL,py+.5); g.lineTo(mL+pw,py+.5); g.stroke();
+    g.setLineDash([]);
+  }
+}
+
+/* ── 圖例 ───────────────────────────────────────────────── */
+function buildSectionLegend(){
+  const el=$('secLegend'); if(!el) return;
+  const sec=S.section;
+  el.innerHTML='';
+  const active=secActiveLines();
+  if(!active.length) return;
+
+  const comps=[...new Set([].concat(...active.map(L=>L.compsUsed)))].sort((a,b)=>a-b);
+  const feats=[...new Set([].concat(...active.map(L=>L.featsUsed)))].sort((a,b)=>a-b);
+
+  // composition 用到哪些 feature，方便對照
+  const compOwners={};
+  const prep = active[0].prep || [];
+  prep.forEach(p=>{
+    const scan = models=>{
+      if(!Array.isArray(models)) return;
+      models.forEach(m=>{
+        (Array.isArray(m && m.compositions)?m.compositions:[]).forEach(cid=>{
+          (compOwners[cid] = compOwners[cid] || new Set()).add(p.name);
+        });
+      });
+    };
+    scan(p.f['composition models']);
+    if(Array.isArray(p.f.segments)) p.f.segments.forEach(s=>scan(s && s['composition models']));
+  });
+
+  const lbl=document.createElement('span');
+  lbl.className='grp'; lbl.textContent='composition';
+  el.appendChild(lbl);
+
+  if(!comps.length){
+    const none=document.createElement('span');
+    none.style.cssText='font-size:11px;color:var(--text-dim)';
+    none.textContent=t('sec.noComp');
+    el.appendChild(none);
+  }
+  comps.forEach(cid=>{
+    const item=document.createElement('div');
+    item.className='item'+(sec.hiddenComps.has(cid)?' off':'');
+    const owners=compOwners[cid] ? [...compOwners[cid]].join(', ') : '';
+    item.title = owners ? `comp ${cid} ← ${owners}` : `comp ${cid}`;
+    item.innerHTML=`<div class="sw" style="background:${compColor(cid)}"></div><span>comp ${cid}</span>`;
+    item.onclick=()=>{
+      if(sec.hiddenComps.has(cid)) sec.hiddenComps.delete(cid); else sec.hiddenComps.add(cid);
+      repaintAllRasters(); drawSectionCanvas(); buildSectionLegend();
+    };
+    el.appendChild(item);
+  });
+
+  if(feats.length){
+    const l2=document.createElement('span');
+    l2.className='grp'; l2.style.marginLeft='10px'; l2.textContent='features';
+    el.appendChild(l2);
+    feats.forEach(fi=>{
+      const p = prep.find(x=>x.fi===fi);
+      const item=document.createElement('div');
+      item.className='item';
+      item.title=t('sec.greyTip');
+      const c=hslRgb((fi*137.508)%360,.30,.26);
+      item.innerHTML=`<div class="sw" style="background:rgb(${c.join(',')})"></div>`+
+                     `<span style="color:${getColor(fi)}">${p?p.name:('F'+fi)}</span>`;
+      item.onclick=()=>{
+        if(S.hiddenFeatures.has(fi)) S.hiddenFeatures.delete(fi); else S.hiddenFeatures.add(fi);
+        updateAll(); scheduleSectionCompute(0);
+      };
+      el.appendChild(item);
+    });
+  }
+}
+
+/* ── 地圖上的剖面線 ─────────────────────────────────────── */
+function drawSectionLineOnMap(){
+  if(!S.bbox) return;
+  secLines().forEach(L=>{
+    if(!L.on) return;
+    const a=L.p1, b=L.p2 || L.preview;
+    if(!a) return;
+    const sa=worldToScreen(a.x,a.y);
+    ctx.save();
+    if(b){
+      const sb=worldToScreen(b.x,b.y);
+      ctx.strokeStyle=L.color;
+      ctx.lineWidth=2;
+      ctx.setLineDash(L.p2?[]:[7,5]);
+      ctx.beginPath(); ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y); ctx.stroke();
+      ctx.setLineDash([]);
+      drawSecHandle(sb, L.id+'′', L.color);
+    }
+    drawSecHandle(sa, L.id, L.color);
+    ctx.restore();
+  });
+}
+function drawSecHandle(s, label, color){
+  ctx.fillStyle=color;
+  ctx.strokeStyle='#0a0c12'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.rect(s.x-5, s.y-5, 10, 10); ctx.fill(); ctx.stroke();
+  ctx.font='bold 12px Consolas'; ctx.fillStyle=color;
+  ctx.textAlign='left'; ctx.textBaseline='bottom';
+  ctx.shadowColor='rgba(0,0,0,.8)'; ctx.shadowBlur=4;
+  ctx.fillText(label, s.x+8, s.y-4);
+  ctx.shadowBlur=0;
+}
+function hitSectionEndpoint(mx,my){
+  const sec=S.section;
+  if(sec.picking || !S.bbox) return null;
+  for(const L of secLines()){
+    if(!L.on) continue;
+    for(const key of ['p2','p1']){
+      const p=L[key]; if(!p) continue;
+      const s=worldToScreen(p.x,p.y);
+      if(Math.hypot(mx-s.x, my-s.y) <= 9) return { id:L.id, key };
+    }
+  }
+  return null;
+}
+
+/* ── 等長 ───────────────────────────────────────────────── */
+function applyEqualLength(){
+  const sec=S.section;
+  if(!sec.equalLen) return;
+  const ref=sec.lines[sec.eqRef];
+  const oth=sec.lines[sec.eqRef==='A'?'B':'A'];
+  if(!ref.p1||!ref.p2||!oth.p1||!oth.p2) return;
+  const target=worldDist(ref.p1, ref.p2);
+  if(!(target>0)) return;
+  // 球面座標時一次縮放不會剛好收斂，迭代幾次
+  for(let it=0; it<4; it++){
+    const cur=worldDist(oth.p1, oth.p2);
+    if(!(cur>0)) return;
+    const k=target/cur;
+    if(Math.abs(k-1)<1e-9) break;
+    oth.p2={ x: oth.p1.x+(oth.p2.x-oth.p1.x)*k, y: oth.p1.y+(oth.p2.y-oth.p1.y)*k };
+  }
+}
+
+/* ── 剖面資訊列 ─────────────────────────────────────────── */
+function updateSectionInfo(){
+  const sec=S.section;
+  secLines().forEach(L=>{
+    const el=$('secInfo'+L.id); if(!el) return;
+    if(!L.on){ el.textContent=t('sec.off'); return; }
+    if(sec.picking && sec.pickId===L.id){
+      el.textContent = (sec.picking===1 ? t('sec.pick1') : t('sec.pick2b')).replace(/\{id\}/g, L.id);
+      return;
+    }
+    const a=L.p1, b=L.p2||L.preview;
+    if(!a || !b){ el.textContent=t('sec.undef'); return; }
+    let az=Math.atan2(b.x-a.x, b.y-a.y)/DEG; if(az<0) az+=360;
+    const extra = (L.ms && L.p2) ? `  ·  ${L.nx}×${L.nz} ${L.ms}ms` : '';
+    el.textContent = `${(worldDist(a,b)/1000).toFixed(1)} km · ${az.toFixed(1)}° · `+
+                     `(${fm(a.x)}, ${fm(a.y)})→(${fm(b.x)}, ${fm(b.y)})${extra}`;
+  });
+  const eq=$('secEqNote');
+  if(eq) eq.textContent = sec.equalLen ? t('sec.eqNote').replace('{o}', sec.eqRef==='A'?'B':'A').replace('{r}', sec.eqRef) : '';
+}
+
+/* ── 面板開關 / 控制項 ──────────────────────────────────── */
+function openSectionPane(open){
+  const sec=S.section;
+  sec.open=open;
+  $('sectionPane').classList.toggle('open', open);
+  $('sectionBtn').classList.toggle('on', open);
+  if(!open){
+    sec.picking=0; sec.pickId=null;
+    secLines().forEach(L=>{ L.preview=null; });
+    $('secPickA').classList.remove('on');
+    $('secPickB').classList.remove('on');
+    resize();
+    return;
+  }
+  resize();
+  scheduleSectionCompute(0);
+}
+function startSectionPick(id){
+  const sec=S.section;
+  const L=sec.lines[id];
+  if(!L.on){ $('secOn'+id).checked=true; setLineEnabled(id,true,false); }
+  sec.picking=1; sec.pickId=id;
+  L.p1=null; L.p2=null; L.preview=null;
+  L.fiGrid=null; L.raster=null;
+  $('secPickA').classList.toggle('on', id==='A');
+  $('secPickB').classList.toggle('on', id==='B');
+  setStatus('ok', t('st.pick1').replace(/\{id\}/g, id));
+  updateSectionInfo(); draw(); drawSectionCanvas(); buildSectionLegend();
+}
+function setSectionLine(id, a, b){
+  const sec=S.section;
+  const L=sec.lines[id];
+  L.p1={x:a.x,y:a.y}; L.p2={x:b.x,y:b.y}; L.preview=null;
+  if(sec.picking && sec.pickId===id){ sec.picking=0; sec.pickId=null; }
+  $('secPick'+id).classList.remove('on');
+  if(!L.on){ $('secOn'+id).checked=true; setLineEnabled(id,true,false); }
+  sec.eqRef=id; const selEq=$('secEqRef'); if(selEq) selEq.value=id;
+  applyEqualLength();
+  updateSectionInfo(); draw();
+  scheduleSectionCompute(0);
+}
+function setLineEnabled(id, on, recompute=true){
+  const sec=S.section, L=sec.lines[id];
+  L.on=on;
+  if(on && (!L.p1 || !L.p2) && S.bbox){
+    const bb=S.bbox;
+    if(id==='A'){ const cy=(bb.minY+bb.maxY)/2; L.p1={x:bb.minX,y:cy}; L.p2={x:bb.maxX,y:cy}; }
+    else        { const cx=(bb.minX+bb.maxX)/2; L.p1={x:cx,y:bb.minY}; L.p2={x:cx,y:bb.maxY}; }
+    applyEqualLength();
+  }
+  if(!on){
+    L.fiGrid=null; L.compGrid=null; L.raster=null; L.prep=null;
+    L.compsUsed=[]; L.featsUsed=[]; L.hover=null; L.plotPrev=null;
+  }
+  $('grp'+id).classList.toggle('off', !on);
+  updateSectionInfo(); draw();
+  if(recompute){ resizeSectionCanvas(); scheduleSectionCompute(0); }
+}
+function resetSectionForNewData(){
+  const sec=S.section;
+  sec.picking=0; sec.pickId=null; sec.hiddenComps=new Set();
+  secLines().forEach(L=>{
+    L.p1=null; L.p2=null; L.preview=null;
+    L.fiGrid=null; L.compGrid=null; L.raster=null; L.prep=null;
+    L.compsUsed=[]; L.featsUsed=[]; L.hover=null; L.ms=0; L.plotPrev=null;
+  });
+  $('secPickA').classList.remove('on');
+  $('secPickB').classList.remove('on');
+
+  const cs = S.editedData && S.editedData['cross section'];
+  const hasCS = Array.isArray(cs) && cs.length>=2 && Array.isArray(cs[0]) && Array.isArray(cs[1]);
+  $('secFileBtn').style.display = hasCS ? '' : 'none';
+  const A=sec.lines.A, B=sec.lines.B;
+  if(hasCS){
+    A.p1={x:cs[0][0], y:cs[0][1]};
+    A.p2={x:cs[1][0], y:cs[1][1]};
+  } else if(S.bbox){
+    const bb=S.bbox, cy=(bb.minY+bb.maxY)/2;
+    A.p1={x:bb.minX, y:cy}; A.p2={x:bb.maxX, y:cy};
+  }
+  if(S.bbox){
+    const bb=S.bbox, cx=(bb.minX+bb.maxX)/2;
+    B.p1={x:cx, y:bb.minY}; B.p2={x:cx, y:bb.maxY};
+  }
+  applyEqualLength();
+
+  const guess = guessMaxDepth();
+  if(guess>0){ sec.maxDepth=guess; $('secDepth').value = Math.round(guess/1000); }
+  updateSectionInfo();
+}
+function guessMaxDepth(){
+  let mx=0;
+  const scan = v=>{
+    if(typeof v==='number'){ if(v>mx && v<3e6) mx=v; return; }
+    if(Array.isArray(v)) v.forEach(scan);
+  };
+  const feats=(S.editedData && Array.isArray(S.editedData.features))?S.editedData.features:[];
+  feats.forEach(f=>{
+    ['composition models','temperature models'].forEach(k=>{
+      if(Array.isArray(f[k])) f[k].forEach(m=>{ if(m) scan(m['max depth']); });
+    });
+    scan(f['max depth']);
+    if(Array.isArray(f.segments)){
+      let sum=0;
+      f.segments.forEach(s=>{ if(s) sum+=num(s.length,0); });
+      if(sum>mx) mx=sum*0.75;
+    }
+  });
+  if(!(mx>0)) return 0;
+  return Math.ceil(mx*1.15/25000)*25000;
+}
+
+function initSectionUI(){
+  const sec=S.section;
+  $('sectionBtn').onclick  = ()=>openSectionPane(!sec.open);
+  $('secCloseBtn').onclick = ()=>openSectionPane(false);
+
+  ['A','B'].forEach(id=>{
+    $('secOn'+id).onchange = function(){ setLineEnabled(id, this.checked); };
+    $('secPick'+id).onclick = ()=>{
+      if(sec.picking && sec.pickId===id){
+        sec.picking=0; sec.pickId=null;
+        $('secPick'+id).classList.remove('on');
+        updateSectionInfo(); draw();
+      } else startSectionPick(id);
+    };
+    $('secH'+id).onclick = ()=>{ if(!S.bbox) return; const b=S.bbox, cy=(b.minY+b.maxY)/2;
+                                 setSectionLine(id, {x:b.minX,y:cy}, {x:b.maxX,y:cy}); };
+    $('secV'+id).onclick = ()=>{ if(!S.bbox) return; const b=S.bbox, cx=(b.minX+b.maxX)/2;
+                                 setSectionLine(id, {x:cx,y:b.minY}, {x:cx,y:b.maxY}); };
+    $('secSwap'+id).onclick = ()=>{
+      const L=sec.lines[id];
+      if(L.p1&&L.p2){ const t=L.p1; L.p1=L.p2; L.p2=t; updateSectionInfo(); draw(); scheduleSectionCompute(0); }
+    };
+  });
+
+  $('secEqual').onchange = function(){
+    sec.equalLen=this.checked;
+    applyEqualLength();
+    updateSectionInfo(); draw(); scheduleSectionCompute(0);
+  };
+  $('secEqRef').onchange = function(){
+    sec.eqRef=this.value;
+    applyEqualLength();
+    updateSectionInfo(); draw(); scheduleSectionCompute(0);
+  };
+  $('secFileBtn').onclick = ()=>{
+    const cs=S.editedData && S.editedData['cross section'];
+    if(Array.isArray(cs) && cs.length>=2) setSectionLine('A', {x:cs[0][0],y:cs[0][1]}, {x:cs[1][0],y:cs[1][1]});
+  };
+  $('secDepth').onchange = function(){
+    const v=parseFloat(this.value);
+    if(!(v>0)){ this.value=Math.round(sec.maxDepth/1000); return; }
+    sec.maxDepth=v*1000; scheduleSectionCompute(0);
+  };
+  $('secRes').onchange = function(){ sec.res=parseInt(this.value,10)||480; scheduleSectionCompute(0); };
+  $('secPngBtn').onclick = ()=>{
+    const c=$('secCanvas');
+    const out=document.createElement('canvas');
+    out.width=c.width; out.height=c.height;
+    const g=out.getContext('2d');
+    g.fillStyle='#0f1117'; g.fillRect(0,0,out.width,out.height);
+    g.drawImage(c,0,0);
+    const a=document.createElement('a');
+    a.download='gwb_cross_section.png';
+    a.href=out.toDataURL('image/png');
+    a.click();
+  };
+
+  // 拖曳分隔線調整高度
+  let dragY=null, startH=0;
+  $('secDivider').addEventListener('mousedown', e=>{
+    dragY=e.clientY; startH=$('sectionPane').offsetHeight;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(dragY==null) return;
+    const wrapH=document.querySelector('.canvas-wrap').clientHeight;
+    const h=Math.max(160, Math.min(wrapH-120, startH-(e.clientY-dragY)));
+    $('sectionPane').style.height=h+'px';
+    resize();
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(dragY!=null){ dragY=null; scheduleSectionCompute(150); }
+  });
+
+  // 剖面畫布 hover
+  const sc=$('secCanvas'), tip=$('secTip');
+  sc.addEventListener('mousemove', e=>{
+    const r=sc.getBoundingClientRect();
+    const px=e.clientX-r.left, py=e.clientY-r.top;
+    let target=null;
+    for(const L of secActiveLines()){
+      const pl=L.plot;
+      if(pl && L.fiGrid && px>=pl.x && px<=pl.x+pl.w && py>=pl.y && py<=pl.y+pl.h){ target=L; break; }
+    }
+    let changed=false;
+    secLines().forEach(L=>{ if(L.hover && L!==target){ L.hover=null; changed=true; } });
+    if(!target){
+      tip.style.display='none';
+      if(changed) drawSectionCanvas();
+      return;
+    }
+    target.hover={px,py};
+    const pl=target.plot;
+    const t=(px-pl.x)/pl.w, depth=((py-pl.y)/pl.h)*S.section.maxDepth;
+    const hit=sectionProbe(target, t, depth);
+    let txt = `【${target.id}–${target.id}′】${t('tip.dist')} ${(t*target.total/1000).toFixed(1)} km   ${t('tip.depth')} ${(depth/1000).toFixed(1)} km\n`;
+    if(!hit){
+      txt += t('tip.noFeat');
+    } else {
+      txt += `feature : ${hit.p.name}  [${hit.p.f.model||'?'}]\n`;
+      if(hit.comp){
+        const list=hit.comp.comps.map((cid,i)=>{
+          const fr=hit.comp.fracs[i];
+          return `${cid}${fr!==undefined?`(${fr})`:''}`;
+        }).join(', ');
+        txt += `comp    : ${hit.comp.comp}  ← [${list}]\n`;
+        txt += `model   : ${hit.comp.modelName}`;
+      } else {
+        txt += 'comp    : '+t('tip.noComp');
+      }
+      if(hit.extra){
+        txt += `\n${t('tip.fromTop')} : ${(hit.extra.dz/1000).toFixed(1)} km / ${t('tip.thick')} ${(hit.extra.th/1000).toFixed(1)} km`;
+        txt += `\n${t('tip.alongSlab')} : ${(hit.extra.s/1000).toFixed(1)} km`;
+      }
+    }
+    tip.textContent=txt;
+    tip.style.display='block';
+    const tw=tip.offsetWidth, th=tip.offsetHeight;
+    tip.style.left = Math.max(4, Math.min(px+14, sc.width-tw-6)) + 'px';
+    tip.style.top  = Math.max(4, Math.min(py+14, sc.height-th-6)) + 'px';
+    drawSectionCanvas();
+  });
+  sc.addEventListener('mouseleave', ()=>{
+    secLines().forEach(L=>{ L.hover=null; });
+    $('secTip').style.display='none';
+    drawSectionCanvas();
+  });
+
+  // 版面一變動就同步 canvas 的實際像素尺寸（避免滑鼠座標與畫面錯位）
+  if(window.ResizeObserver){
+    const ro=new ResizeObserver(()=>resize());
+    ro.observe(document.querySelector('.map-area'));
+    ro.observe(document.querySelector('.sec-body'));
+  }
+  $('grpB').classList.toggle('off', !sec.lines.B.on);
+  resize();
+}
+initSectionUI();
+
+const PLACEHOLDER_EXAMPLE =
+`
+{
+  "features": [
+    {
+      "name": "upper crust",
+      "model": "continental",
+      "coordinates": [[0,0],[100,0],[100,30],[0,30]]
+    }
+  ]
+}`;
+$('jsonInput').placeholder = t('ph.input') + PLACEHOLDER_EXAMPLE;
+syncInputDecorations();
+
+/* ═══════════ language switching ═══════════ */
+function applyLang(){
+  document.documentElement.lang = (LANG==='zh') ? 'zh-TW' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title = t(el.getAttribute('data-i18n-title')); });
+  $('langBtn').textContent = (LANG==='zh') ? 'EN' : '中';
+  $('jsonInput').placeholder = t('ph.input') + PLACEHOLDER_EXAMPLE;
+  $('modeBtn').textContent = S.editMode ? t('btn.editing') : t('btn.edit');
+  if(S.editedData){
+    setStatus('ok', t('st.parsed').replace('{n}', S.features.length));
+    buildWBOutput();
+    buildLegend();
+  } else {
+    setStatus('', t('st.waiting'));
+  }
+  updateSectionInfo();
+  drawSectionCanvas();
+  buildSectionLegend();
+}
+$('langBtn').addEventListener('click', ()=>{
+  LANG = (LANG==='zh') ? 'en' : 'zh';
+  localStorage.setItem('gwbLang', LANG);
+  applyLang();
+});
+applyLang();
+</script>
+</body>
+</html>
